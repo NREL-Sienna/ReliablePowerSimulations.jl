@@ -20,15 +20,15 @@ function PSI.time_constraints!(
     ini_conds, time_params =
         PSI._get_data_for_tdc(initial_conditions_on, initial_conditions_off, resolution)
     forecast_label = "outage"
-    constraint_infos = Vector{DeviceDurationConstraintInfo}
+    constraint_infos = Vector{DeviceDurationConstraintInfo}()
     for (ix, ic) in enumerate(ini_conds[:, 1])
         name = PSI.device_name(ic)
         info = DeviceDurationConstraintInfo(
             name,
             time_params[ix],
-            ini_conds[1,:],
-            get_time_series(optimization_container, ic.device, forecast_label),
+            ini_conds[ix,:],
             1.0,
+            get_time_series(optimization_container, ic.device, forecast_label),
         )
         push!(constraint_infos, info)
     end
@@ -37,20 +37,19 @@ function PSI.time_constraints!(
         if parameters
             device_duration_parameters_outage!(
                 optimization_container,
-                time_params,
-                ini_conds,
+                constraint_infos,
                 PSI.make_constraint_name(PSI.DURATION, T),
                 (
                     PSI.make_variable_name(PSI.OnVariable, T),
                     PSI.make_variable_name(PSI.StartVariable, T),
                     PSI.make_variable_name(PSI.StopVariable, T),
                 ),
+                PSI.UpdateRef{T}(OUTAGE, forecast_label),
             )
         else
-            device_duration_retrospective_outage!(
+            device_duration_look_ahead_outage!(
                 optimization_container,
-                time_params,
-                ini_conds,
+                constraint_infos,
                 PSI.make_constraint_name(PSI.DURATION, T),
                 (
                     PSI.make_variable_name(PSI.OnVariable, T),
