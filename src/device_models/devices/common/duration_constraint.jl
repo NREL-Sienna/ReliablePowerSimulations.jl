@@ -18,13 +18,15 @@ function device_duration_look_ahead_outage!(
 
     set_names = [PSI.device_name(ic) for ic in constraint_info]
     con_up = PSI.add_cons_container!(optimization_container, name_up, set_names, time_steps)
-    con_down = PSI.add_cons_container!(optimization_container, name_down, set_names, time_steps)
+    con_down =
+        PSI.add_cons_container!(optimization_container, name_down, set_names, time_steps)
 
     for t in time_steps
         for cont in constraint_info
             name = PSI.device_name(cont)
             # Minimum Up-time Constraint
-            expr_up = JuMP.GenericAffExpr{Float64, PSI._variable_type(optimization_container)}(0)
+            expr_up =
+                JuMP.GenericAffExpr{Float64, PSI._variable_type(optimization_container)}(0)
             for i in (t - cont.duration_data.up + 1):t
                 if i in time_steps
                     JuMP.add_to_expression!(expr_up, varon[name, i])
@@ -35,7 +37,8 @@ function device_duration_look_ahead_outage!(
             end
             con_up[name, t] = JuMP.@constraint(
                 optimization_container.JuMPmodel,
-                varstop[name, t] * cont.duration_data.up - expr_up <= cont.timeseries[t] * cont.multiplier
+                varstop[name, t] * cont.duration_data.up - expr_up <=
+                cont.timeseries[t] * cont.multiplier
             )
 
             # Minimum Down-time Constraint
@@ -51,13 +54,13 @@ function device_duration_look_ahead_outage!(
             end
             con_down[name, t] = JuMP.@constraint(
                 optimization_container.JuMPmodel,
-                varstart[name, t] * cont.duration_data.down - expr_dn <= cont.timeseries[t] * cont.multiplier
+                varstart[name, t] * cont.duration_data.down - expr_dn <=
+                cont.timeseries[t] * cont.multiplier
             )
         end
     end
     return
 end
-
 
 # TODO: docstrings
 @doc raw"""
@@ -80,7 +83,8 @@ function device_duration_parameters_outage!(
 
     set_names = [PSI.device_name(ic) for ic in constraint_info]
     con_up = PSI.add_cons_container!(optimization_container, name_up, set_names, time_steps)
-    con_down = PSI.add_cons_container!(optimization_container, name_down, set_names, time_steps)
+    con_down =
+        PSI.add_cons_container!(optimization_container, name_down, set_names, time_steps)
 
     container_target = PSI.add_param_container!(
         optimization_container,
@@ -95,11 +99,13 @@ function device_duration_parameters_outage!(
         for cont in constraint_info
             name = PSI.device_name(cont)
 
-            param[name, t] = PJ.add_parameter(optimization_container.JuMPmodel, cont.timeseries[t])
+            param[name, t] =
+                PJ.add_parameter(optimization_container.JuMPmodel, cont.timeseries[t])
             multiplier[name, t] = cont.multiplier
 
             # Minimum Up-time Constraint
-            expr_up = JuMP.GenericAffExpr{Float64, PSI._variable_type(optimization_container)}(0)
+            expr_up =
+                JuMP.GenericAffExpr{Float64, PSI._variable_type(optimization_container)}(0)
             for i in (t - cont.duration_data.up + 1):t
                 if i in time_steps
                     JuMP.add_to_expression!(expr_up, varon[name, i])
@@ -111,7 +117,8 @@ function device_duration_parameters_outage!(
 
             con_up[name, t] = JuMP.@constraint(
                 optimization_container.JuMPmodel,
-                varstop[name, t] * cont.duration_data.up - expr_up <= param[name, t] * cont.duration_data.up
+                varstop[name, t] * cont.duration_data.up - expr_up <=
+                param[name, t] * cont.duration_data.up
             )
 
             # Minimum Down-time Constraint
@@ -127,7 +134,8 @@ function device_duration_parameters_outage!(
             end
             con_down[name, t] = JuMP.@constraint(
                 optimization_container.JuMPmodel,
-                varstart[name, t] * cont.duration_data.down - expr_dn <= param[name, t] *  cont.duration_data.down
+                varstart[name, t] * cont.duration_data.down - expr_dn <=
+                param[name, t] * cont.duration_data.down
             )
         end
     end

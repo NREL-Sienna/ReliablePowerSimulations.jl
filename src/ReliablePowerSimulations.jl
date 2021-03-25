@@ -30,5 +30,6 @@ include("device_models/devices/common/duration_constraint.jl")
 
 include("./device_models/devices/thermal_generation.jl")
 
+include("./device_models/device_constructors/thermalgeneration_constructor.jl")
 
 end # module
