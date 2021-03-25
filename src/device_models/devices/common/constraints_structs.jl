@@ -5,3 +5,12 @@ struct DeviceDurationConstraintInfo <: PSI.AbstractStartConstraintInfo
     multiplier::Float64
     timeseries::Vector{Float64}
 end
+
+#TODO: Constraint struct outage start/stop 
+#=
+struct  <: PSI.AbstractStartConstraintInfo
+    component_name::String
+    multiplier::Float64
+    timeseries::Vector{Float64}
+end
+=#

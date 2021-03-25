@@ -27,6 +27,7 @@ include("./core/constraints.jl")
 
 include("device_models/devices/common/constraints_structs.jl")
 include("device_models/devices/common/duration_constraint.jl")
+include("device_models/devices/common/duration_constraint.jl")
 
 include("./device_models/devices/thermal_generation.jl")
 
