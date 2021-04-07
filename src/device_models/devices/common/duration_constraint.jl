@@ -16,14 +16,14 @@ function device_duration_look_ahead_outage!(
     name_up = PSI.middle_rename(cons_name, PSI.PSI_NAME_DELIMITER, "up")
     name_down = PSI.middle_rename(cons_name, PSI.PSI_NAME_DELIMITER, "dn")
 
-    set_names = [PSI.device_name(ic) for ic in constraint_info]
+    set_names = [PSI.get_component_name(ic) for ic in constraint_info]
     con_up = PSI.add_cons_container!(optimization_container, name_up, set_names, time_steps)
     con_down =
         PSI.add_cons_container!(optimization_container, name_down, set_names, time_steps)
 
     for t in time_steps
         for cont in constraint_info
-            name = PSI.device_name(cont)
+            name = PSI.get_component_name(cont)
             # Minimum Up-time Constraint
             expr_up =
                 JuMP.GenericAffExpr{Float64, PSI._variable_type(optimization_container)}(0)
@@ -38,7 +38,7 @@ function device_duration_look_ahead_outage!(
             con_up[name, t] = JuMP.@constraint(
                 optimization_container.JuMPmodel,
                 varstop[name, t] * cont.duration_data.up - expr_up <=
-                cont.timeseries[t] * cont.multiplier
+                cont.timeseries[t] * cont.duration_data.up
             )
 
             # Minimum Down-time Constraint
@@ -55,7 +55,7 @@ function device_duration_look_ahead_outage!(
             con_down[name, t] = JuMP.@constraint(
                 optimization_container.JuMPmodel,
                 varstart[name, t] * cont.duration_data.down - expr_dn <=
-                cont.timeseries[t] * cont.multiplier
+                cont.timeseries[t] * cont.duration_data.down
             )
         end
     end
@@ -81,23 +81,23 @@ function device_duration_parameters_outage!(
     name_up = PSI.middle_rename(cons_name, PSI.PSI_NAME_DELIMITER, "up")
     name_down = PSI.middle_rename(cons_name, PSI.PSI_NAME_DELIMITER, "dn")
 
-    set_names = [PSI.device_name(ic) for ic in constraint_info]
+    set_names = [PSI.get_component_name(ic) for ic in constraint_info]
     con_up = PSI.add_cons_container!(optimization_container, name_up, set_names, time_steps)
     con_down =
         PSI.add_cons_container!(optimization_container, name_down, set_names, time_steps)
 
-    container_target = PSI.add_param_container!(
+    container_outage = PSI.add_param_container!(
         optimization_container,
         param_reference,
         set_names,
         time_steps,
     )
-    param = PSI.get_parameter_array(container_target)
-    multiplier = PSI.get_multiplier_array(container_target)
+    param = PSI.get_parameter_array(container_outage)
+    multiplier = PSI.get_multiplier_array(container_outage)
 
     for t in time_steps
         for cont in constraint_info
-            name = PSI.device_name(cont)
+            name = PSI.get_component_name(cont)
 
             param[name, t] =
                 PJ.add_parameter(optimization_container.JuMPmodel, cont.timeseries[t])

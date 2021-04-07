@@ -24,9 +24,9 @@ function PSI.time_constraints!(
         info = DeviceDurationConstraintInfo(
             name,
             time_params[ix],
-            ini_conds[ix, :],
+            Tuple(ini_conds[ix, :]),
             1.0,
-            get_time_series(optimization_container, ic.device, forecast_label),
+            PSI.get_time_series(optimization_container, ic.device, forecast_label),
         )
         push!(constraint_infos, info)
     end
@@ -69,9 +69,93 @@ function outage_constraints!(
     ::Type{S},
     feedforward::Union{Nothing, PSI.AbstractAffectFeedForward},
 ) where {T <: PSY.ThermalGen, S <: PM.AbstractPowerModel}
-    #TODO: implement method for outage constraint
-    #1 get time series data -> store it in constraint_infos
-    #2 pass all the args (i.e. optimization_container, data, var_names, constraint_name)
-    #  to right function depending on parameters
+
+    parameters = PSI.model_has_parameters(optimization_container)
+    resolution = PSI.model_resolution(optimization_container)
+    initial_conditions =
+        PSI.get_initial_conditions(optimization_container, PSI.ICKey(OutageStatus, T))
+    forecast_label = "outage"
+    constraint_infos = Vector{DeviceOutageConstraintInfo}()
+    for (ix, ic) in enumerate(initial_conditions)
+        name = PSI.device_name(ic)
+        info = DeviceOutageConstraintInfo(
+            name,
+            ic,
+            1.0,
+            PSI.get_time_series(optimization_container, ic.device, forecast_label),
+        )
+        push!(constraint_infos, info)
+    end
+
+    if !(isempty(initial_conditions))
+        if parameters
+            # device_outage!(
+            #     optimization_container,
+            #     constraint_infos,
+            #     PSI.make_constraint_name(OUTAGE, T),
+            #     (
+            #         PSI.make_variable_name(PSI.StartVariable, T),
+            #         PSI.make_variable_name(PSI.StopVariable, T),
+            #     ),
+            #     PSI.UpdateRef{T}(OUTAGE, forecast_label),
+            # )
+            device_outage_ub_parameter!(
+                optimization_container,
+                constraint_infos,
+                PSI.make_constraint_name(OUTAGE, T),
+                PSI.make_variable_name(PSI.ON, T),
+                PSI.UpdateRef{T}(OUTAGE, forecast_label),
+            )
+        else
+            # device_outage_parameter!(
+            #     optimization_container,
+            #     constraint_infos,
+            #     PSI.make_constraint_name(PSI.DURATION, T),
+            #     (
+            #         PSI.make_variable_name(PSI.StartVariable, T),
+            #         PSI.make_variable_name(PSI.StopVariable, T),
+            #     ),
+            # )
+            device_outage_ub!(
+                optimization_container,
+                constraint_infos,
+                PSI.make_constraint_name(OUTAGE, T),
+                PSI.make_variable_name(PSI.ON, T),
+            )
+        end
+    else
+        @warn "Data doesn't contain generators with initial condition for outage status, consider adjusting your formulation"
+    end
+
+    return
+end
+
+function PSI.initial_conditions!(
+    optimization_container::PSI.OptimizationContainer,
+    devices::IS.FlattenIteratorWrapper{T},
+    formulation::ThermalStandardUCOutages,
+) where {T <: PSY.ThermalGen}
+    PSI.status_initial_condition!(optimization_container, devices, formulation)
+    PSI.output_initial_condition!(optimization_container, devices, formulation)
+    PSI.duration_initial_condition!(optimization_container, devices, formulation)
+    outage_status_initial_condition!(optimization_container, devices, formulation)
+    return
+end
+
+function outage_status_initial_condition!(
+    optimization_container::PSI.OptimizationContainer,
+    devices::IS.FlattenIteratorWrapper{T},
+    ::ThermalStandardUCOutages,
+) where {T <: PSY.ThermalGen}
+    PSI._make_initial_conditions!(
+        optimization_container,
+        devices,
+        ThermalStandardUCOutages(),
+        nothing,
+        PSI.ICKey(OutageStatus, T),
+        _make_initial_condition_outage_status,
+        _get_outage_initial_value,
+    )
+
     return
 end

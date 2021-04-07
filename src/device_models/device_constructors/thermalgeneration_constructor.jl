@@ -1,7 +1,7 @@
 """
 This function creates the model for a full thermal dispatch formulation depending on combination of devices, device_formulation and system_formulation
 """
-function construct_device!(
+function PSI.construct_device!(
     optimization_container::PSI.OptimizationContainer,
     sys::PSY.System,
     model::PSI.DeviceModel{T, ThermalStandardUCOutages},
@@ -112,7 +112,7 @@ end
 """
 This function creates the model for a full thermal dispatch formulation depending on combination of devices, device_formulation and system_formulation
 """
-function construct_device!(
+function PSI.construct_device!(
     optimization_container::PSI.OptimizationContainer,
     sys::PSY.System,
     model::PSI.DeviceModel{T, ThermalStandardUCOutages},
