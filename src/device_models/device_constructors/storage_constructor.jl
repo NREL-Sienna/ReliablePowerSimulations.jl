@@ -43,7 +43,11 @@ function PSI.construct_device!(
     )
 
     # Initial Conditions
-    PSI.initial_conditions!(optimization_container, devices, BookKeepingwReservationOutage())
+    PSI.initial_conditions!(
+        optimization_container,
+        devices,
+        BookKeepingwReservationOutage(),
+    )
 
     # Constraints
     PSI.add_constraints!(
@@ -140,7 +144,11 @@ function PSI.construct_device!(
     )
 
     # Initial Conditions
-    PSI.initial_conditions!(optimization_container, devices, BookKeepingwReservationOutage())
+    PSI.initial_conditions!(
+        optimization_container,
+        devices,
+        BookKeepingwReservationOutage(),
+    )
 
     # Constraints
     PSI.add_constraints!(
@@ -228,7 +236,11 @@ function PSI.construct_device!(
     )
 
     # Initial Conditions
-    PSI.initial_conditions!(optimization_container, devices, EndOfPeriodEnergyTargetOutage())
+    PSI.initial_conditions!(
+        optimization_container,
+        devices,
+        EndOfPeriodEnergyTargetOutage(),
+    )
 
     # Constraints
     PSI.add_constraints!(
@@ -284,7 +296,13 @@ function PSI.construct_device!(
     )
 
     # Cost Function
-    PSI.cost_function!(optimization_container, devices, model, S, PSI.get_feedforward(model))
+    PSI.cost_function!(
+        optimization_container,
+        devices,
+        model,
+        S,
+        PSI.get_feedforward(model),
+    )
 
     return
 end
@@ -322,7 +340,11 @@ function PSI.construct_device!(
     )
 
     # Initial Conditions
-    PSI.initial_conditions!(optimization_container, devices, EndOfPeriodEnergyTargetOutage())
+    PSI.initial_conditions!(
+        optimization_container,
+        devices,
+        EndOfPeriodEnergyTargetOutage(),
+    )
 
     # Constraints
     PSI.add_constraints!(
@@ -369,7 +391,13 @@ function PSI.construct_device!(
     )
 
     # Cost Function
-    PSI.cost_function!(optimization_container, devices, model, S, PSI.get_feedforward(model))
+    PSI.cost_function!(
+        optimization_container,
+        devices,
+        model,
+        S,
+        PSI.get_feedforward(model),
+    )
 
     return
 end

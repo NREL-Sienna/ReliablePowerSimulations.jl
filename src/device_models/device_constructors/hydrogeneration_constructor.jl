@@ -3,10 +3,7 @@ function PSI.construct_device!(
     sys::PSY.System,
     model::PSI.DeviceModel{H, HydroDispatchRunOfRiverOutage},
     ::Type{S},
-) where {
-    H <: PSY.HydroGen,
-    S <: PM.AbstractPowerModel,
-}
+) where {H <: PSY.HydroGen, S <: PM.AbstractPowerModel}
     devices = PSI.get_available_components(H, sys)
 
     if !PSI.validate_available_devices(H, devices)
@@ -14,8 +11,18 @@ function PSI.construct_device!(
     end
 
     # Variables
-    PSI.add_variables!(optimization_container, PSI.ActivePowerVariable, devices, HydroDispatchRunOfRiverOutage())
-    PSI.add_variables!(optimization_container, PSI.ReactivePowerVariable, devices, HydroDispatchRunOfRiverOutage())
+    PSI.add_variables!(
+        optimization_container,
+        PSI.ActivePowerVariable,
+        devices,
+        HydroDispatchRunOfRiverOutage(),
+    )
+    PSI.add_variables!(
+        optimization_container,
+        PSI.ReactivePowerVariable,
+        devices,
+        HydroDispatchRunOfRiverOutage(),
+    )
 
     # Constraints
     PSI.add_constraints!(
@@ -60,10 +67,7 @@ function PSI.construct_device!(
     sys::PSY.System,
     model::PSI.DeviceModel{H, HydroDispatchRunOfRiverOutage},
     ::Type{S},
-) where {
-    H <: PSY.HydroGen,
-    S <: PM.AbstractActivePowerModel,
-}
+) where {H <: PSY.HydroGen, S <: PM.AbstractActivePowerModel}
     devices = PSI.get_available_components(H, sys)
 
     if !PSI.validate_available_devices(H, devices)
@@ -71,7 +75,12 @@ function PSI.construct_device!(
     end
 
     # Variables
-    PSI.add_variables!(optimization_container, PSI.ActivePowerVariable, devices, HydroDispatchRunOfRiverOutage())
+    PSI.add_variables!(
+        optimization_container,
+        PSI.ActivePowerVariable,
+        devices,
+        HydroDispatchRunOfRiverOutage(),
+    )
 
     # Constraints
     PSI.add_constraints!(
@@ -272,8 +281,6 @@ function PSI.construct_device!(
 
     return
 end
-
-
 
 function PSI.construct_device!(
     optimization_container::PSI.OptimizationContainer,

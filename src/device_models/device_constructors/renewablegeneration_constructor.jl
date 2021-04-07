@@ -3,11 +3,7 @@ function PSI.construct_device!(
     sys::PSY.System,
     model::PSI.DeviceModel{R, D},
     ::Type{S},
-) where {
-    R <: PSY.RenewableGen,
-    D <: RenewableOutageDispatch,
-    S <: PM.AbstractPowerModel,
-}
+) where {R <: PSY.RenewableGen, D <: RenewableOutageDispatch, S <: PM.AbstractPowerModel}
     devices = PSI.get_available_components(R, sys)
 
     if !PSI.validate_available_devices(R, devices)
@@ -37,7 +33,13 @@ function PSI.construct_device!(
         S,
         PSI.get_feedforward(model),
     )
-    outage_constraints!(optimization_container, devices, model, S, PSI.get_feedforward(model))
+    outage_constraints!(
+        optimization_container,
+        devices,
+        model,
+        S,
+        PSI.get_feedforward(model),
+    )
     PSI.eedforward!(optimization_container, devices, model, PSI.get_feedforward(model))
 
     # Cost Function
@@ -75,7 +77,13 @@ function PSI.construct_device!(
         S,
         PSI.get_feedforward(model),
     )
-    outage_constraints!(optimization_container, devices, model, S, PSI.get_feedforward(model))
+    outage_constraints!(
+        optimization_container,
+        devices,
+        model,
+        S,
+        PSI.get_feedforward(model),
+    )
     PSI.feedforward!(optimization_container, devices, model, PSI.get_feedforward(model))
 
     # Cost Function

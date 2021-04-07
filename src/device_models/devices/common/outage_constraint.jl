@@ -121,7 +121,7 @@ function device_outage_ub!(
         name = PSI.get_component_name(cont)
         constraint[name, t] = JuMP.@constraint(
             optimization_container.JuMPmodel,
-            varp[name, t] <=  (1 - cont.timeseries[t])*PSI.M_VALUE
+            varp[name, t] <= (1 - cont.timeseries[t]) * PSI.M_VALUE
         )
     end
     return
@@ -152,11 +152,12 @@ function device_outage_ub_parameter!(
 
     for cont in constraint_info, t in time_steps
         name = PSI.get_component_name(cont)
-        param[name, t] = PJ.add_parameter(optimization_container.JuMPmodel, cont.timeseries[t])
+        param[name, t] =
+            PJ.add_parameter(optimization_container.JuMPmodel, cont.timeseries[t])
         multiplier[name, t] = cont.multiplier
         constraint[name, t] = JuMP.@constraint(
             optimization_container.JuMPmodel,
-            varp[name, t] <=  (1 - param[name, t])*PSI.M_VALUE
+            varp[name, t] <= (1 - param[name, t]) * PSI.M_VALUE
         )
     end
     return

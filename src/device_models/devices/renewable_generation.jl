@@ -7,7 +7,6 @@ function outage_constraints!(
     ::Type{S},
     feedforward::Union{Nothing, PSI.AbstractAffectFeedForward},
 ) where {T <: PSY.RenewableGen, S <: PM.AbstractPowerModel}
-
     parameters = PSI.model_has_parameters(optimization_container)
     resolution = PSI.model_resolution(optimization_container)
 

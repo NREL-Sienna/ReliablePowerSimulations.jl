@@ -9,7 +9,6 @@ function outage_constraints!(
     ::Type{S},
     feedforward::Union{Nothing, PSI.AbstractAffectFeedForward},
 ) where {T <: PSY.HydroGen, S <: PM.AbstractPowerModel, D <: PSI.AbstractHydroFormulation}
-
     parameters = PSI.model_has_parameters(optimization_container)
     resolution = PSI.model_resolution(optimization_container)
 
@@ -56,8 +55,11 @@ function outage_constraints!(
     model::PSI.DeviceModel{T, D},
     ::Type{S},
     feedforward::Union{Nothing, PSI.AbstractAffectFeedForward},
-) where {T <: PSY.HydroPumpedStorage, S <: PM.AbstractPowerModel, D <: PSI.AbstractHydroFormulation}
-
+) where {
+    T <: PSY.HydroPumpedStorage,
+    S <: PM.AbstractPowerModel,
+    D <: PSI.AbstractHydroFormulation,
+}
     parameters = PSI.model_has_parameters(optimization_container)
     resolution = PSI.model_resolution(optimization_container)
 
