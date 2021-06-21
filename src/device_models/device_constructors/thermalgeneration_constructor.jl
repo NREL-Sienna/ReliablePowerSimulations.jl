@@ -204,3 +204,103 @@ function PSI.construct_device!(
 
     return
 end
+
+function construct_device!(
+    optimization_container::OptimizationContainer,
+    sys::PSY.System,
+    model::DeviceModel{T, ThermalDispatchOutages},
+    ::Type{S},
+) where {
+    T <: PSY.ThermalGen,
+    S <: PM.AbstractPowerModel,
+}
+    devices = get_available_components(T, sys)
+
+    if !validate_available_devices(T, devices)
+        return
+    end
+
+    # Variables
+    add_variables!(optimization_container, ActivePowerVariable, devices, ThermalDispatchOutages())
+    add_variables!(optimization_container, ReactivePowerVariable, devices, ThermalDispatchOutages())
+
+    # Initial Conditions
+
+    # Constraints
+    add_constraints!(
+        optimization_container,
+        RangeConstraint,
+        ActivePowerVariable,
+        devices,
+        model,
+        S,
+        get_feedforward(model),
+    )
+    add_constraints!(
+        optimization_container,
+        RangeConstraint,
+        ReactivePowerVariable,
+        devices,
+        model,
+        S,
+        get_feedforward(model),
+    )
+    outage_constraints!(
+        optimization_container,
+        devices,
+        model,
+        S,
+        PSI.get_feedforward(model),
+    )
+    feedforward!(optimization_container, devices, model, get_feedforward(model))
+
+    # Cost Function
+    cost_function!(optimization_container, devices, model, S, get_feedforward(model))
+
+    return
+end
+
+function construct_device!(
+    optimization_container::OptimizationContainer,
+    sys::PSY.System,
+    model::DeviceModel{T, ThermalDispatchOutages},
+    ::Type{S},
+) where {
+    T <: PSY.ThermalGen,
+    S <: PM.AbstractActivePowerModel,
+}
+    devices = get_available_components(T, sys)
+
+    if !validate_available_devices(T, devices)
+        return
+    end
+
+    # Variables
+    add_variables!(optimization_container, ActivePowerVariable, devices, ThermalDispatchOutages())
+
+    # Initial Conditions
+
+    # Constraints
+    add_constraints!(
+        optimization_container,
+        RangeConstraint,
+        ActivePowerVariable,
+        devices,
+        model,
+        S,
+        get_feedforward(model),
+    )
+    outage_constraints!(
+        optimization_container,
+        devices,
+        model,
+        S,
+        PSI.get_feedforward(model),
+    )
+    feedforward!(optimization_container, devices, model, get_feedforward(model))
+
+    # Cost Function
+    cost_function!(optimization_container, devices, model, S, get_feedforward(model))
+
+    return
+end
