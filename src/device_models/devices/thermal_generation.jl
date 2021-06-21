@@ -1,4 +1,5 @@
 struct ThermalStandardUCOutages <: PSI.AbstractStandardUnitCommitment end
+struct ThermalDispatchOutages <: PSI.AbstractThermalDispatchFormulation end
 
 function PSI.time_constraints!(
     optimization_container::PSI.OptimizationContainer,
@@ -65,10 +66,10 @@ end
 function outage_constraints!(
     optimization_container::PSI.OptimizationContainer,
     devices::IS.FlattenIteratorWrapper{T},
-    model::PSI.DeviceModel{T, ThermalStandardUCOutages},
+    model::PSI.DeviceModel{T, D},
     ::Type{S},
     feedforward::Union{Nothing, PSI.AbstractAffectFeedForward},
-) where {T <: PSY.ThermalGen, S <: PM.AbstractPowerModel}
+) where {T <: PSY.ThermalGen, S <: PM.AbstractPowerModel, D <: Union{ThermalStandardUCOutages, ThermalDispatchOutages}}
     parameters = PSI.model_has_parameters(optimization_container)
     resolution = PSI.model_resolution(optimization_container)
     initial_conditions =
@@ -88,16 +89,6 @@ function outage_constraints!(
 
     if !(isempty(initial_conditions))
         if parameters
-            # device_outage!(
-            #     optimization_container,
-            #     constraint_infos,
-            #     PSI.make_constraint_name(OUTAGE, T),
-            #     (
-            #         PSI.make_variable_name(PSI.StartVariable, T),
-            #         PSI.make_variable_name(PSI.StopVariable, T),
-            #     ),
-            #     PSI.UpdateRef{T}(OUTAGE, forecast_label),
-            # )
             device_outage_ub_parameter!(
                 optimization_container,
                 constraint_infos,
@@ -106,15 +97,6 @@ function outage_constraints!(
                 PSI.UpdateRef{T}(OUTAGE, forecast_label),
             )
         else
-            # device_outage_parameter!(
-            #     optimization_container,
-            #     constraint_infos,
-            #     PSI.make_constraint_name(PSI.DURATION, T),
-            #     (
-            #         PSI.make_variable_name(PSI.StartVariable, T),
-            #         PSI.make_variable_name(PSI.StopVariable, T),
-            #     ),
-            # )
             device_outage_ub!(
                 optimization_container,
                 constraint_infos,
@@ -132,8 +114,8 @@ end
 function PSI.initial_conditions!(
     optimization_container::PSI.OptimizationContainer,
     devices::IS.FlattenIteratorWrapper{T},
-    formulation::ThermalStandardUCOutages,
-) where {T <: PSY.ThermalGen}
+    formulation::D,
+) where {T <: PSY.ThermalGen, D <: Union{ThermalStandardUCOutages, ThermalDispatchOutages}}
     PSI.status_initial_condition!(optimization_container, devices, formulation)
     PSI.output_initial_condition!(optimization_container, devices, formulation)
     PSI.duration_initial_condition!(optimization_container, devices, formulation)
@@ -144,8 +126,8 @@ end
 function outage_status_initial_condition!(
     optimization_container::PSI.OptimizationContainer,
     devices::IS.FlattenIteratorWrapper{T},
-    ::ThermalStandardUCOutages,
-) where {T <: PSY.ThermalGen}
+    ::D,
+) where {T <: PSY.ThermalGen, D <: Union{ThermalStandardUCOutages, ThermalDispatchOutages}}
     PSI._make_initial_conditions!(
         optimization_container,
         devices,
