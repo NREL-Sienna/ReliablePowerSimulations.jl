@@ -208,7 +208,7 @@ end
 function construct_device!(
     optimization_container::OptimizationContainer,
     sys::PSY.System,
-    model::DeviceModel{T, ThermalDispatchOutages},
+    model::PSI.DeviceModel{T, ThermalDispatchOutages},
     ::Type{S},
 ) where {
     T <: PSY.ThermalGen,
@@ -263,7 +263,7 @@ end
 function construct_device!(
     optimization_container::OptimizationContainer,
     sys::PSY.System,
-    model::DeviceModel{T, ThermalDispatchOutages},
+    model::PSI.DeviceModel{T, ThermalDispatchOutages},
     ::Type{S},
 ) where {
     T <: PSY.ThermalGen,
