@@ -77,7 +77,7 @@ function outage_constraints!(
     forecast_label = "outage"
     constraint_infos = Vector{DeviceOutageConstraintInfo}()
     for (ix, ic) in enumerate(initial_conditions)
-        name = PSI.device_name(ic)
+        name = PSI.get_name(ic.device)
         info = DeviceOutageConstraintInfo(
             name,
             ic,
