@@ -11,17 +11,17 @@ function PSI.time_constraints!(
     parameters = PSI.model_has_parameters(optimization_container)
     resolution = PSI.model_resolution(optimization_container)
     initial_conditions_on =
-        PSI.get_initial_conditions(optimization_container, PSI.ICKey(PSI.TimeDurationON, T))
+        PSI.get_initial_conditions(optimization_container, PSI.ICKey(PSI.InitialTimeDurationOn, T))
     initial_conditions_off = PSI.get_initial_conditions(
         optimization_container,
-        PSI.ICKey(PSI.TimeDurationOFF, T),
+        PSI.ICKey(PSI.InitialTimeDurationOff, T),
     )
     ini_conds, time_params =
         PSI._get_data_for_tdc(initial_conditions_on, initial_conditions_off, resolution)
     forecast_label = "outage"
     constraint_infos = Vector{DeviceDurationConstraintInfo}()
     for (ix, ic) in enumerate(ini_conds[:, 1])
-        name = PSI.device_name(ic)
+        name = PSI.get_name(ic.device)
         info = DeviceDurationConstraintInfo(
             name,
             time_params[ix],
@@ -69,7 +69,7 @@ function outage_constraints!(
     model::PSI.DeviceModel{T, D},
     ::Type{S},
     feedforward::Union{Nothing, PSI.AbstractAffectFeedForward},
-) where {T <: PSY.ThermalGen, S <: PM.AbstractPowerModel, D <: Union{ThermalStandardUCOutages, ThermalDispatchOutages}}
+) where {T <: PSY.ThermalGen, S <: PM.AbstractPowerModel, D <: ThermalStandardUCOutages}
     parameters = PSI.model_has_parameters(optimization_container)
     resolution = PSI.model_resolution(optimization_container)
     initial_conditions =
@@ -102,6 +102,54 @@ function outage_constraints!(
                 constraint_infos,
                 PSI.make_constraint_name(OUTAGE, T),
                 PSI.make_variable_name(PSI.ON, T),
+            )
+        end
+    else
+        @warn "Data doesn't contain generators with initial condition for outage status, consider adjusting your formulation"
+    end
+
+    return
+end
+
+function outage_constraints!(
+    optimization_container::PSI.OptimizationContainer,
+    devices::IS.FlattenIteratorWrapper{T},
+    model::PSI.DeviceModel{T, D},
+    ::Type{S},
+    feedforward::Union{Nothing, PSI.AbstractAffectFeedForward},
+) where {T <: PSY.ThermalGen, S <: PM.AbstractPowerModel, D <: ThermalDispatchOutages}
+    parameters = PSI.model_has_parameters(optimization_container)
+    resolution = PSI.model_resolution(optimization_container)
+    initial_conditions =
+        PSI.get_initial_conditions(optimization_container, PSI.ICKey(OutageStatus, T))
+    forecast_label = "outage"
+    constraint_infos = Vector{DeviceOutageConstraintInfo}()
+    for (ix, ic) in enumerate(initial_conditions)
+        name = PSI.get_name(ic.device)
+        info = DeviceOutageConstraintInfo(
+            name,
+            ic,
+            1.0,
+            PSI.get_time_series(optimization_container, ic.device, forecast_label),
+        )
+        push!(constraint_infos, info)
+    end
+
+    if !(isempty(initial_conditions))
+        if parameters
+            device_outage_ub_parameter!(
+                optimization_container,
+                constraint_infos,
+                PSI.make_constraint_name(OUTAGE, T),
+                PSI.make_variable_name(PSI.ACTIVE_POWER, T),
+                PSI.UpdateRef{T}(OUTAGE, forecast_label),
+            )
+        else
+            device_outage_ub!(
+                optimization_container,
+                constraint_infos,
+                PSI.make_constraint_name(OUTAGE, T),
+                PSI.make_variable_name(PSI.ACTIVE_POWER, T),
             )
         end
     else

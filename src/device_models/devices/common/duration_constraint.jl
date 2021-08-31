@@ -29,11 +29,12 @@ function device_duration_look_ahead_outage!(
                 JuMP.GenericAffExpr{Float64, PSI._variable_type(optimization_container)}(0)
             for i in (t - cont.duration_data.up + 1):t
                 if i in time_steps
+                    i = Int64(i)
                     JuMP.add_to_expression!(expr_up, varon[name, i])
                 end
             end
             if t <= cont.duration_data.up
-                expr_up += cont.initial_duration[1].value
+                expr_up += first(cont.initial_duration).value
             end
             con_up[name, t] = JuMP.@constraint(
                 optimization_container.JuMPmodel,
@@ -46,11 +47,12 @@ function device_duration_look_ahead_outage!(
                 JuMP.GenericAffExpr{Float64, PSI._variable_type(optimization_container)}(0)
             for i in (t - cont.duration_data.down + 1):t
                 if i in time_steps
+                    i = Int64(i)
                     JuMP.add_to_expression!(expr_dn, (1 - varon[name, i]))
                 end
             end
             if t <= cont.duration_data.down
-                expr_dn += cont.initial_duration[2].value
+                expr_dn += last(cont.initial_duration).value
             end
             con_down[name, t] = JuMP.@constraint(
                 optimization_container.JuMPmodel,

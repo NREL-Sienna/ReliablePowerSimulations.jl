@@ -157,7 +157,7 @@ function device_outage_ub_parameter!(
         multiplier[name, t] = cont.multiplier
         constraint[name, t] = JuMP.@constraint(
             optimization_container.JuMPmodel,
-            varp[name, t] <= (1 - param[name, t]) * PSI.M_VALUE
+            varp[name, t]/PSI.M_VALUE <= (1 - param[name, t])
         )
     end
     return

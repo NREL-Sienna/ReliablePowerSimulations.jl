@@ -225,7 +225,7 @@ function PSI.construct_device!(
     PSI.add_variables!(optimization_container, PSI.ReactivePowerVariable, devices, ThermalDispatchOutages())
 
     # Initial Conditions
-
+    PSI.initial_conditions!(optimization_container, devices, ThermalDispatchOutages())
     # Constraints
     PSI.add_constraints!(
         optimization_container,
@@ -269,9 +269,9 @@ function PSI.construct_device!(
     T <: PSY.ThermalGen,
     S <: PM.AbstractActivePowerModel,
 }
-    devices = get_available_components(T, sys)
+    devices = PSI.get_available_components(T, sys)
 
-    if !validate_available_devices(T, devices)
+    if !PSI.validate_available_devices(T, devices)
         return
     end
 
@@ -279,7 +279,7 @@ function PSI.construct_device!(
     PSI.add_variables!(optimization_container, PSI.ActivePowerVariable, devices, ThermalDispatchOutages())
 
     # Initial Conditions
-
+    PSI.initial_conditions!(optimization_container, devices, ThermalDispatchOutages())
     # Constraints
     PSI.add_constraints!(
         optimization_container,
@@ -288,7 +288,7 @@ function PSI.construct_device!(
         devices,
         model,
         S,
-        get_feedforward(model),
+        PSI.get_feedforward(model),
     )
     outage_constraints!(
         optimization_container,
