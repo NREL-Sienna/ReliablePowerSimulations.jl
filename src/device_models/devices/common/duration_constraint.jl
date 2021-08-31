@@ -88,11 +88,9 @@ function device_duration_parameters_outage!(
     con_down =
         PSI.add_cons_container!(optimization_container, name_down, set_names, time_steps)
 
-    container_outage = PSI.add_param_container!(
+    container_outage = PSI.get_parameter_container!(
         optimization_container,
-        param_reference,
-        set_names,
-        time_steps,
+        param_reference
     )
     param = PSI.get_parameter_array(container_outage)
     multiplier = PSI.get_multiplier_array(container_outage)
