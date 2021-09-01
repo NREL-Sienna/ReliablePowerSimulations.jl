@@ -223,9 +223,10 @@ function PSI.construct_device!(
     # Variables
     PSI.add_variables!(optimization_container, PSI.ActivePowerVariable, devices, ThermalDispatchOutages())
     PSI.add_variables!(optimization_container, PSI.ReactivePowerVariable, devices, ThermalDispatchOutages())
+    PSI.add_variables!(optimization_container, AuxiliaryOnVariable, devices, ThermalDispatchOutages())
 
     # Initial Conditions
-    PSI.initial_conditions!(optimization_container, devices, ThermalDispatchOutages())
+
     # Constraints
     PSI.add_constraints!(
         optimization_container,
@@ -245,14 +246,14 @@ function PSI.construct_device!(
         S,
         PSI.get_feedforward(model),
     )
-    outage_constraints!(
+    add_outage_parameter!(
         optimization_container,
         devices,
         model,
         S,
         PSI.get_feedforward(model),
     )
-    PSI.feedforward!(optimization_container, devices, model, PSI.get_feedforward(model))
+    feedforward!(optimization_container, devices, model, PSI.get_feedforward(model))
 
     # Cost Function
     PSI.cost_function!(optimization_container, devices, model, S, PSI.get_feedforward(model))
@@ -277,9 +278,10 @@ function PSI.construct_device!(
 
     # Variables
     PSI.add_variables!(optimization_container, PSI.ActivePowerVariable, devices, ThermalDispatchOutages())
+    PSI.add_variables!(optimization_container, AuxiliaryOnVariable, devices, ThermalDispatchOutages())
 
     # Initial Conditions
-    PSI.initial_conditions!(optimization_container, devices, ThermalDispatchOutages())
+
     # Constraints
     PSI.add_constraints!(
         optimization_container,
@@ -290,7 +292,7 @@ function PSI.construct_device!(
         S,
         PSI.get_feedforward(model),
     )
-    outage_constraints!(
+    add_outage_parameter!(
         optimization_container,
         devices,
         model,

@@ -11,6 +11,7 @@ export BookKeepingwReservationOutage
 export EndOfPeriodEnergyTargetOutage
 export RenewableOutageDispatch
 
+export SemiContinuousOutagesFF
 #################################################################################
 # Imports
 using PowerSystems
@@ -29,9 +30,11 @@ const PJ = ParameterJuMP
 
 #################################################################################
 # Includes
+include("./core/constraints.jl")
 include("./core/variables.jl")
 include("./core/initial_condition_types.jl")
 include("./core/update_initial_conditions.jl")
+include("./core/feedforward.jl")
 
 include("device_models/devices/common/constraints_structs.jl")
 include("device_models/devices/common/duration_constraint.jl")
