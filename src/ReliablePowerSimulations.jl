@@ -4,6 +4,7 @@ module ReliablePowerSimulations
 # Exports
 export ThermalStandardUCOutages
 export ThermalDispatchOutages
+export ThermalBasicUCOutages
 export HydroDispatchRunOfRiverOutage
 export HydroDispatchReservoirStorageOutage
 export HydroDispatchPumpedStoragewReservationOutage

@@ -1,5 +1,5 @@
 struct ThermalStandardUCOutages <: PSI.AbstractStandardUnitCommitment end
-struct ThermalCompactUCOutages <: PSI.AbstractCompactUnitCommitment end
+struct ThermalBasicUCOutages <: PSI.AbstractStandardUnitCommitment end
 struct ThermalDispatchOutages <: PSI.AbstractThermalDispatchFormulation end
 
 ############## AuxiliaryOnVariable, ThermalGen ####################
@@ -27,7 +27,7 @@ end
 function PSI.time_constraints!(
     optimization_container::PSI.OptimizationContainer,
     devices::IS.FlattenIteratorWrapper{T},
-    model::PSI.DeviceModel{T, Union{ThermalStandardUCOutages, ThermalCompactUCOutages}},
+    model::PSI.DeviceModel{T, Union{ThermalStandardUCOutages, ThermalBasicUCOutages}},
     ::Type{S},
     feedforward::Union{Nothing, PSI.AbstractAffectFeedForward},
 ) where {T <: PSY.ThermalGen, S <: PM.AbstractPowerModel}
@@ -92,7 +92,7 @@ function outage_constraints!(
     model::PSI.DeviceModel{T, D},
     ::Type{S},
     feedforward::Union{Nothing, PSI.AbstractAffectFeedForward},
-) where {T <: PSY.ThermalGen, S <: PM.AbstractPowerModel, D <: Union{ThermalStandardUCOutages, ThermalCompactUCOutages}}
+) where {T <: PSY.ThermalGen, S <: PM.AbstractPowerModel, D <: Union{ThermalStandardUCOutages, ThermalBasicUCOutages}}
     parameters = PSI.model_has_parameters(optimization_container)
     resolution = PSI.model_resolution(optimization_container)
     # initial_conditions =
@@ -225,7 +225,7 @@ function PSI.initial_conditions!(
     optimization_container::PSI.OptimizationContainer,
     devices::IS.FlattenIteratorWrapper{T},
     formulation::D,
-) where {T <: PSY.ThermalGen, D <: Union{ThermalStandardUCOutages, ThermalDispatchOutages, ThermalCompactUCOutages}}
+) where {T <: PSY.ThermalGen, D <: Union{ThermalStandardUCOutages, ThermalBasicUCOutages}}
     PSI.status_initial_condition!(optimization_container, devices, formulation)
     PSI.output_initial_condition!(optimization_container, devices, formulation)
     PSI.duration_initial_condition!(optimization_container, devices, formulation)
@@ -237,7 +237,7 @@ function outage_status_initial_condition!(
     optimization_container::PSI.OptimizationContainer,
     devices::IS.FlattenIteratorWrapper{T},
     ::D,
-) where {T <: PSY.ThermalGen, D <: Union{ThermalStandardUCOutages, ThermalDispatchOutages, ThermalCompactUCOutages}}
+) where {T <: PSY.ThermalGen, D <: Union{ThermalStandardUCOutages, ThermalBasicUCOutages}}
     PSI._make_initial_conditions!(
         optimization_container,
         devices,
