@@ -1,5 +1,5 @@
 struct ThermalStandardUCOutages <: PSI.AbstractStandardUnitCommitment end
-struct ThermalCompactUCOutages <: PSI.AbstractStandardUnitCommitment end
+struct ThermalCompactUCOutages <: PSI.AbstractCompactUnitCommitment end
 struct ThermalDispatchOutages <: PSI.AbstractThermalDispatchFormulation end
 
 ############## AuxiliaryOnVariable, ThermalGen ####################
