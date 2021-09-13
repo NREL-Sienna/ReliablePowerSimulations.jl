@@ -15,7 +15,7 @@ export RenewableOutageDispatch
 export SemiContinuousOutagesFF
 #################################################################################
 # Imports
-using PowerSystems
+import PowerSystems
 import InfrastructureSystems
 import Dates
 import PowerSimulations

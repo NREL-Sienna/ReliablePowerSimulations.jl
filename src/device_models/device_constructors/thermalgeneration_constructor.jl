@@ -118,7 +118,7 @@ function PSI.construct_device!(
     model::PSI.DeviceModel{T, ThermalStandardUCOutages},
     ::Type{S},
 ) where {T <: PSY.ThermalGen, S <: PM.AbstractActivePowerModel}
-    devices = get_available_components(T, sys)
+    devices = PSI.get_available_components(T, sys)
 
     if !PSI.validate_available_devices(T, devices)
         return
@@ -285,13 +285,6 @@ function PSI.construct_device!(
         S,
         PSI.get_feedforward(model),
     )
-    PSI.ramp_constraints!(
-        optimization_container,
-        devices,
-        model,
-        S,
-        PSI.get_feedforward(model),
-    )
 
     PSI.feedforward!(optimization_container, devices, model, PSI.get_feedforward(model))
 
@@ -316,7 +309,7 @@ function PSI.construct_device!(
     model::PSI.DeviceModel{T, ThermalBasicUCOutages},
     ::Type{S},
 ) where {T <: PSY.ThermalGen, S <: PM.AbstractActivePowerModel}
-    devices = get_available_components(T, sys)
+    devices = PSI.get_available_components(T, sys)
 
     if !PSI.validate_available_devices(T, devices)
         return
