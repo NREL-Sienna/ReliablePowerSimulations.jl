@@ -59,20 +59,40 @@ function device_outage_parameter!(
         param[name, 1] =
             PJ.add_parameter(optimization_container.JuMPmodel, cont.timeseries[1])
         multiplier[name, 1] = cont.multiplier
+        varz = JuMP.@variable(optimization_container.JuMPmodel, base_name = "outage_z_{$(name), 1}")
+        vary = JuMP.@variable(optimization_container.JuMPmodel, base_name = "outage_y_{$(name), 1}")
+        JuMP.@constraint(optimization_container.JuMPmodel, varz <= varon[name, 1])
+        JuMP.@constraint(optimization_container.JuMPmodel, vary <= varon[name, 1])
+
+        JuMP.@constraint(optimization_container.JuMPmodel, varz <= 1.0)
+        JuMP.@constraint(optimization_container.JuMPmodel, vary <= param[name, 1])
+        
+        JuMP.@constraint(optimization_container.JuMPmodel, varz <= varon[name, 1])
+        JuMP.@constraint(optimization_container.JuMPmodel, vary <= param[name, 1] + varon[name, 1] - 1.0)
 
         con_stop[name, 1] = JuMP.@constraint(
             optimization_container.JuMPmodel,
-            # varstop[name, 1] >= cont.initial_condition.value - param[name, 1]
-            varstop[name, 1] >= 1.0 - param[name, 1] - varon[name, 1]
+            varstop[name, 1] >= varz - vary
         )
         for t in time_steps[2:end]
             param[name, t] =
                 PJ.add_parameter(optimization_container.JuMPmodel, cont.timeseries[t])
             multiplier[name, t] = cont.multiplier
+            varz = JuMP.@variable(optimization_container.JuMPmodel, base_name = "outage_z_{$(name), $(t)}")
+            vary = JuMP.@variable(optimization_container.JuMPmodel, base_name = "outage_y_{$(name), $(t)}")
+            JuMP.@constraint(optimization_container.JuMPmodel, varz <= varon[name, t])
+            JuMP.@constraint(optimization_container.JuMPmodel, vary <= varon[name, t])
+    
+            JuMP.@constraint(optimization_container.JuMPmodel, varz <= param[name, t-1])
+            JuMP.@constraint(optimization_container.JuMPmodel, vary <= param[name, t])
+            
+            JuMP.@constraint(optimization_container.JuMPmodel, varz <= param[name, t-1] + varon[name, t] - 1.0)
+            JuMP.@constraint(optimization_container.JuMPmodel, vary <= param[name, t] + varon[name, t] - 1.0)
             con_stop[name, t] = JuMP.@constraint(
                 optimization_container.JuMPmodel,
-                varstop[name, t] >= param[name, t - 1] - param[name, t] - varon[name, t]
+                varstop[name, t] >= varz - vary
             )
+            
         end
     end
     return
