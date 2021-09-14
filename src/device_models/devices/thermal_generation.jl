@@ -153,6 +153,7 @@ function outage_constraints!(
                 (
                     PSI.make_variable_name(PSI.OnVariable, T),
                     PSI.make_variable_name(PSI.StopVariable, T),
+                    PSI.make_variable_name(PSI.StartVariable, T),
                 ),
                 PSI.UpdateRef{T}(OUTAGE, forecast_label),
             )
@@ -164,6 +165,7 @@ function outage_constraints!(
                 (
                     PSI.make_variable_name(PSI.OnVariable, T),
                     PSI.make_variable_name(PSI.StopVariable, T),
+                    PSI.make_variable_name(PSI.StartVariable, T),
                 ),
             )
         end
