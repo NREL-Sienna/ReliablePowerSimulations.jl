@@ -67,8 +67,8 @@ function device_outage_parameter!(
         JuMP.@constraint(optimization_container.JuMPmodel, varz <= 1.0)
         JuMP.@constraint(optimization_container.JuMPmodel, vary <= param[name, 1])
         
-        JuMP.@constraint(optimization_container.JuMPmodel, varz <= varon[name, 1])
-        JuMP.@constraint(optimization_container.JuMPmodel, vary <= param[name, 1] + varon[name, 1] - 1.0)
+        JuMP.@constraint(optimization_container.JuMPmodel, varz >= varon[name, 1])
+        JuMP.@constraint(optimization_container.JuMPmodel, vary >= param[name, 1] + varon[name, 1] - 1.0)
 
         con_stop[name, 1] = JuMP.@constraint(
             optimization_container.JuMPmodel,
@@ -86,8 +86,8 @@ function device_outage_parameter!(
             JuMP.@constraint(optimization_container.JuMPmodel, varz <= param[name, t-1])
             JuMP.@constraint(optimization_container.JuMPmodel, vary <= param[name, t])
             
-            JuMP.@constraint(optimization_container.JuMPmodel, varz <= param[name, t-1] + varon[name, t] - 1.0)
-            JuMP.@constraint(optimization_container.JuMPmodel, vary <= param[name, t] + varon[name, t] - 1.0)
+            JuMP.@constraint(optimization_container.JuMPmodel, varz >= param[name, t-1] + varon[name, t] - 1.0)
+            JuMP.@constraint(optimization_container.JuMPmodel, vary >= param[name, t] + varon[name, t] - 1.0)
             con_stop[name, t] = JuMP.@constraint(
                 optimization_container.JuMPmodel,
                 varstop[name, t] >= varz - vary

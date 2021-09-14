@@ -24,6 +24,40 @@ function PSI.DeviceRangeConstraintSpec(
     return PSI.DeviceRangeConstraintSpec()
 end
 
+function ramp_constraints!(
+    optimization_container::PSI.OptimizationContainer,
+    ::IS.FlattenIteratorWrapper{T},
+    model::PSI.DeviceModel{T, D},
+    ::Type{S},
+    feedforward::Union{Nothing, PSI.AbstractAffectFeedForward},
+) where {
+    T <: PSY.ThermalGen,
+    D <: Union{ThermalStandardUCOutages, ThermalBasicUCOutages},
+    S <: PSI.PM.AbstractPowerModel,
+}
+    data = PSI._get_data_for_rocc(optimization_container, T)
+    if !isempty(data)
+        # Here goes the reactive power ramp limits when versions for AC and DC are added
+        for r in data
+            PSI.add_device_services!(r, r.ic_power.device, model)
+        end
+        device_mixedinteger_rateofchange_outages!(
+            optimization_container,
+            data,
+            PSI.make_constraint_name(PSI.RAMP, T),
+            (
+                PSI.make_variable_name(PSI.ActivePowerVariable, T),
+                PSI.make_variable_name(PSI.StartVariable, T),
+                PSI.make_variable_name(PSI.StopVariable, T),
+            ),
+            PSI.UpdateRef{T}(OUTAGE, "outage"),
+        )
+    else
+        @warn "Data doesn't contain generators with ramp limits, consider adjusting your formulation"
+    end
+    return
+end
+
 function PSI.time_constraints!(
     optimization_container::PSI.OptimizationContainer,
     devices::IS.FlattenIteratorWrapper{T},

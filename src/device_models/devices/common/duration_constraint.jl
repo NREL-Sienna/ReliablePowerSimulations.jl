@@ -137,7 +137,6 @@ function device_duration_parameters_outage!(
             con_down[name, t] = JuMP.@constraint(
                 optimization_container.JuMPmodel,
                 varstart[name, t] * cont.duration_data.down  <= expr_dn 
-                + (1 * cont.duration_data.down - param[name, t] * cont.duration_data.down)
             )
         end
     end
