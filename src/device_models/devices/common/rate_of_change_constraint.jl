@@ -59,7 +59,7 @@ function device_mixedinteger_rateofchange_outages!(
         for val in r.additional_terms_ub
             JuMP.add_to_expression!(
                 expression_ub,
-                gPSI.et_variable(optimization_container, val)[name, t],
+                PSI.get_variable(optimization_container, val)[name, t],
             )
         end
         con_up[name, t] = JuMP.@constraint(
