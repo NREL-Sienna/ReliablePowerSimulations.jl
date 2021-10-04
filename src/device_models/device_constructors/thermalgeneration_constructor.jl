@@ -292,7 +292,6 @@ function PSI.construct_device!(
         S,
         PSI.get_feedforward(model),
     )
-    
     PSI.feedforward!(optimization_container, devices, model, PSI.get_feedforward(model))
 
     # Cost Function
@@ -397,15 +396,14 @@ function PSI.construct_device!(
     return
 end
 
-
-
 function PSI.construct_device!(
     optimization_container::PSI.OptimizationContainer,
     sys::PSY.System,
-    model::PSI.DeviceModel{T, ThermalDispatchOutages},
+    model::PSI.DeviceModel{T, D},
     ::Type{S},
 ) where {
     T <: PSY.ThermalGen,
+    D <: AbstractThermalOutageDispatchFormulation,
     S <: PSI.PM.AbstractPowerModel,
 }
     devices = PSI.get_available_components(T, sys)
@@ -415,9 +413,9 @@ function PSI.construct_device!(
     end
 
     # Variables
-    PSI.add_variables!(optimization_container, PSI.ActivePowerVariable, devices, ThermalDispatchOutages())
-    PSI.add_variables!(optimization_container, PSI.ReactivePowerVariable, devices, ThermalDispatchOutages())
-    PSI.add_variables!(optimization_container, AuxiliaryOnVariable, devices, ThermalDispatchOutages())
+    PSI.add_variables!(optimization_container, PSI.ActivePowerVariable, devices, D())
+    PSI.add_variables!(optimization_container, PSI.ReactivePowerVariable, devices, D())
+    PSI.add_variables!(optimization_container, AuxiliaryOnVariable, devices, D())
 
     # Initial Conditions
 
@@ -458,10 +456,11 @@ end
 function PSI.construct_device!(
     optimization_container::PSI.OptimizationContainer,
     sys::PSY.System,
-    model::PSI.DeviceModel{T, ThermalDispatchOutages},
+    model::PSI.DeviceModel{T, D},
     ::Type{S},
 ) where {
     T <: PSY.ThermalGen,
+    D <: AbstractThermalOutageDispatchFormulation,
     S <: PM.AbstractActivePowerModel,
 }
     devices = PSI.get_available_components(T, sys)
@@ -471,8 +470,8 @@ function PSI.construct_device!(
     end
 
     # Variables
-    PSI.add_variables!(optimization_container, PSI.ActivePowerVariable, devices, ThermalDispatchOutages())
-    PSI.add_variables!(optimization_container, AuxiliaryOnVariable, devices, ThermalDispatchOutages())
+    PSI.add_variables!(optimization_container, PSI.ActivePowerVariable, devices, D())
+    PSI.add_variables!(optimization_container, AuxiliaryOnVariable, devices, D())
 
     # Initial Conditions
 
@@ -493,6 +492,110 @@ function PSI.construct_device!(
         S,
         PSI.get_feedforward(model),
     )
+    PSI.feedforward!(optimization_container, devices, model, PSI.get_feedforward(model))
+
+    # Cost Function
+    PSI.cost_function!(optimization_container, devices, model, S, PSI.get_feedforward(model))
+
+    return
+end
+
+function PSI.construct_device!(
+    optimization_container::PSI.OptimizationContainer,
+    sys::PSY.System,
+    model::PSI.DeviceModel{T, ThermalRampLimitedOutages},
+    ::Type{S},
+) where {
+    T <: PSY.ThermalGen,
+    S <: PSI.PM.AbstractPowerModel,
+}
+    devices = PSI.get_available_components(T, sys)
+
+    if !PSI.validate_available_devices(T, devices)
+        return
+    end
+
+    # Variables
+    PSI.add_variables!(optimization_container, PSI.ActivePowerVariable, devices, ThermalRampLimitedOutages())
+    PSI.add_variables!(optimization_container, PSI.ReactivePowerVariable, devices, ThermalRampLimitedOutages())
+    PSI.add_variables!(optimization_container, AuxiliaryOnVariable, devices, ThermalRampLimitedOutages())
+
+    # Initial Conditions
+
+    # Constraints
+    PSI.add_constraints!(
+        optimization_container,
+        PSI.RangeConstraint,
+        PSI.ActivePowerVariable,
+        devices,
+        model,
+        S,
+        PSI.get_feedforward(model),
+    )
+    PSI.add_constraints!(
+        optimization_container,
+        PSI.RangeConstraint,
+        PSI.ReactivePowerVariable,
+        devices,
+        model,
+        S,
+        PSI.get_feedforward(model),
+    )
+    add_outage_parameter!(
+        optimization_container,
+        devices,
+        model,
+        S,
+        PSI.get_feedforward(model),
+    )
+    ramp_constraints!(optimization_container, devices, model, S, PSI.get_feedforward(model))
+    feedforward!(optimization_container, devices, model, PSI.get_feedforward(model))
+
+    # Cost Function
+    PSI.cost_function!(optimization_container, devices, model, S, PSI.get_feedforward(model))
+
+    return
+end
+
+function PSI.construct_device!(
+    optimization_container::PSI.OptimizationContainer,
+    sys::PSY.System,
+    model::PSI.DeviceModel{T, ThermalRampLimitedOutages},
+    ::Type{S},
+) where {
+    T <: PSY.ThermalGen,
+    S <: PM.AbstractActivePowerModel,
+}
+    devices = PSI.get_available_components(T, sys)
+
+    if !PSI.validate_available_devices(T, devices)
+        return
+    end
+
+    # Variables
+    PSI.add_variables!(optimization_container, PSI.ActivePowerVariable, devices, ThermalRampLimitedOutages())
+    PSI.add_variables!(optimization_container, AuxiliaryOnVariable, devices, ThermalRampLimitedOutages())
+
+    # Initial Conditions
+
+    # Constraints
+    PSI.add_constraints!(
+        optimization_container,
+        PSI.RangeConstraint,
+        PSI.ActivePowerVariable,
+        devices,
+        model,
+        S,
+        PSI.get_feedforward(model),
+    )
+    add_outage_parameter!(
+        optimization_container,
+        devices,
+        model,
+        S,
+        PSI.get_feedforward(model),
+    )
+    ramp_constraints!(optimization_container, devices, model, S, PSI.get_feedforward(model))
     PSI.feedforward!(optimization_container, devices, model, PSI.get_feedforward(model))
 
     # Cost Function

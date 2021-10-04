@@ -1,3 +1,85 @@
+function device_linear_rateofchange_outages!(
+    optimization_container::OptimizationContainer,
+    rate_data::Vector{DeviceRampConstraintInfo},
+    cons_name::Symbol,
+    var_name::Symbol,
+    update_ref::PSI.UpdateRef,
+)
+    parameters = model_has_parameters(optimization_container)
+    time_steps = model_time_steps(optimization_container)
+    up_name = middle_rename(cons_name, PSI_NAME_DELIMITER, "up")
+    down_name = middle_rename(cons_name, PSI_NAME_DELIMITER, "dn")
+
+    variable = get_variable(optimization_container, var_name)
+
+    set_name = [get_component_name(r) for r in rate_data]
+    con_up = add_cons_container!(optimization_container, up_name, set_name, time_steps)
+    con_down = add_cons_container!(optimization_container, down_name, set_name, time_steps)
+    container_outage = PSI.get_parameter_container(optimization_container, update_ref)
+    outage_parameter = PSI.get_parameter_array(container_outage)
+    multiplier = PSI.get_multiplier_array(container_outage)
+
+    for r in rate_data
+        name = get_component_name(r)
+        ic_power = get_value(get_ic_power(r))
+        @debug "add rate_of_change_constraint" name ic_power
+        @assert (parameters && isa(ic_power, PJ.ParameterRef)) || !parameters
+        expression_ub = JuMP.AffExpr(0.0, variable[name, 1] => 1.0)
+        for val in r.additional_terms_ub
+            JuMP.add_to_expression!(
+                expression_ub,
+                get_variable(optimization_container, val)[name, 1],
+            )
+        end
+        con_up[name, 1] = JuMP.@constraint(
+            optimization_container.JuMPmodel,
+            expression_ub - ic_power <= r.ramp_limits.up
+        )
+        expression_lb = JuMP.AffExpr(0.0, variable[name, 1] => 1.0)
+        for val in r.additional_terms_lb
+            JuMP.add_to_expression!(
+                expression_lb,
+                get_variable(optimization_container, val)[name, 1],
+                -1.0,
+            )
+        end
+        con_down[name, 1] = JuMP.@constraint(
+            optimization_container.JuMPmodel,
+            ic_power - expression_lb <= r.ramp_limits.down
+        )
+    end
+
+    for t in time_steps[2:end], r in rate_data
+        name = get_component_name(r)
+        expression_ub = JuMP.AffExpr(0.0, variable[name, t] => 1.0)
+        for val in r.additional_terms_ub
+            JuMP.add_to_expression!(
+                expression_ub,
+                get_variable(optimization_container, val)[name, t],
+            )
+        end
+        con_up[name, t] = JuMP.@constraint(
+            optimization_container.JuMPmodel,
+            expression_ub - variable[name, t - 1] <= r.ramp_limits.up
+        )
+        expression_lb = JuMP.AffExpr(0.0, variable[name, t] => 1.0)
+        for val in r.additional_terms_lb
+            JuMP.add_to_expression!(
+                expression_lb,
+                get_variable(optimization_container, val)[name, t],
+                -1.0,
+            )
+        end
+        con_down[name, t] = JuMP.@constraint(
+            optimization_container.JuMPmodel,
+            variable[name, t - 1] - expression_lb <= r.ramp_limits.down + (r.limits.max  - outage_parameter[name, t]*r.limits.max )
+        )
+    end
+
+    return
+end
+
+
 function device_mixedinteger_rateofchange_outages!(
     optimization_container::PSI.OptimizationContainer,
     rate_data::Vector{PSI.DeviceRampConstraintInfo},

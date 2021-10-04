@@ -1,6 +1,9 @@
+abstract type AbstractThermalOutageDispatchFormulation <: PSI.AbstractThermalDispatchFormulation end
 struct ThermalStandardUCOutages <: PSI.AbstractStandardUnitCommitment end
 struct ThermalBasicUCOutages <: PSI.AbstractStandardUnitCommitment end
-struct ThermalDispatchOutages <: PSI.AbstractThermalDispatchFormulation end
+struct ThermalDispatchOutages <: AbstractThermalOutageDispatchFormulation end
+struct ThermalRampLimitedOutages <: AbstractThermalOutageDispatchFormulation end
+struct ThermalNoMinOutages <: AbstractThermalOutageDispatchFormulation end
 
 ############## AuxiliaryOnVariable, ThermalGen ####################
 PSI.get_variable_binary(::AuxiliaryOnVariable, ::Type{<:PSY.ThermalGen}, _) = false
@@ -50,6 +53,36 @@ function ramp_constraints!(
                 PSI.make_variable_name(PSI.StartVariable, T),
                 PSI.make_variable_name(PSI.StopVariable, T),
             ),
+            PSI.UpdateRef{T}(OUTAGE, "outage"),
+        )
+    else
+        @warn "Data doesn't contain generators with ramp limits, consider adjusting your formulation"
+    end
+    return
+end
+
+function ramp_constraints!(
+    optimization_container::PSI.OptimizationContainer,
+    ::PSI.IS.FlattenIteratorWrapper{T},
+    model::PSI.DeviceModel{T, D},
+    ::Type{S},
+    feedforward::Union{Nothing, PSI.AbstractAffectFeedForward},
+) where {
+    T <: PSY.ThermalGen,
+    D <: PSI.AbstractThermalDispatchFormulation,
+    S <: PSI.PM.AbstractPowerModel,
+}
+    data = PSI._get_data_for_rocc(optimization_container, T)
+    if !isempty(data)
+        for r in data
+            PSI.add_device_services!(r, r.ic_power.device, model)
+        end
+        # Here goes the reactive power ramp limits when versions for AC and DC are added
+        device_linear_rateofchange_outages!(
+            optimization_container,
+            data,
+            PSI.make_constraint_name(PSI.RAMP, T),
+            PSI.make_variable_name(PSI.ActivePowerVariable, T),
             PSI.UpdateRef{T}(OUTAGE, "outage"),
         )
     else
