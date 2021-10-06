@@ -215,7 +215,7 @@ function outage_constraints!(
     model::PSI.DeviceModel{T, D},
     ::Type{S},
     feedforward::Union{Nothing, PSI.AbstractAffectFeedForward},
-) where {T <: PSY.ThermalGen, S <: PM.AbstractPowerModel, D <: ThermalDispatchOutages}
+) where {T <: PSY.ThermalGen, S <: PM.AbstractPowerModel, D <: AbstractThermalOutageDispatchFormulation}
     parameters = PSI.model_has_parameters(optimization_container)
     resolution = PSI.model_resolution(optimization_container)
     # initial_conditions =
@@ -264,7 +264,7 @@ function add_outage_parameter!(
     model::PSI.DeviceModel{T, D},
     ::Type{S},
     feedforward::Union{Nothing, PSI.AbstractAffectFeedForward},
-) where {T <: PSY.ThermalGen, S <: PM.AbstractPowerModel, D <: ThermalDispatchOutages}
+) where {T <: PSY.ThermalGen, S <: PM.AbstractPowerModel, D <: AbstractThermalOutageDispatchFormulation}
     parameters = PSI.model_has_parameters(optimization_container)
     resolution = PSI.model_resolution(optimization_container)
     time_steps = PSI.model_time_steps(optimization_container)

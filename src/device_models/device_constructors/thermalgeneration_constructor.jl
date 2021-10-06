@@ -418,6 +418,7 @@ function PSI.construct_device!(
     PSI.add_variables!(optimization_container, AuxiliaryOnVariable, devices, D())
 
     # Initial Conditions
+    PSI.initial_conditions!(optimization_container, devices, D())
 
     # Constraints
     PSI.add_constraints!(
@@ -474,7 +475,8 @@ function PSI.construct_device!(
     PSI.add_variables!(optimization_container, AuxiliaryOnVariable, devices, D())
 
     # Initial Conditions
-
+    PSI.initial_conditions!(optimization_container, devices, D())
+    
     # Constraints
     PSI.add_constraints!(
         optimization_container,
@@ -521,6 +523,7 @@ function PSI.construct_device!(
     PSI.add_variables!(optimization_container, AuxiliaryOnVariable, devices, ThermalRampLimitedOutages())
 
     # Initial Conditions
+    PSI.initial_conditions!(optimization_container, devices, ThermalRampLimitedOutages())
 
     # Constraints
     PSI.add_constraints!(
@@ -577,7 +580,8 @@ function PSI.construct_device!(
     PSI.add_variables!(optimization_container, AuxiliaryOnVariable, devices, ThermalRampLimitedOutages())
 
     # Initial Conditions
-
+    PSI.initial_conditions!(optimization_container, devices, ThermalRampLimitedOutages())
+    
     # Constraints
     PSI.add_constraints!(
         optimization_container,
