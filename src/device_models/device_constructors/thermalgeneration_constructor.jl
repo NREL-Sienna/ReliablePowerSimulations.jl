@@ -88,7 +88,7 @@ function PSI.construct_device!(
         S,
         PSI.get_feedforward(model),
     )
-    PSI.time_constraints!(
+    time_constraints!(
         optimization_container,
         devices,
         model,
@@ -184,7 +184,7 @@ function PSI.construct_device!(
         S,
         PSI.get_feedforward(model),
     )
-    PSI.time_constraints!(
+    time_constraints!(
         optimization_container,
         devices,
         model,

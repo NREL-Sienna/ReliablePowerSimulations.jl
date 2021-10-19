@@ -91,13 +91,13 @@ function ramp_constraints!(
     return
 end
 
-function PSI.time_constraints!(
+function time_constraints!(
     optimization_container::PSI.OptimizationContainer,
     devices::IS.FlattenIteratorWrapper{T},
-    model::PSI.DeviceModel{T, Union{ThermalStandardUCOutages, ThermalBasicUCOutages}},
+    model::PSI.DeviceModel{T, U},
     ::Type{S},
     feedforward::Union{Nothing, PSI.AbstractAffectFeedForward},
-) where {T <: PSY.ThermalGen, S <: PM.AbstractPowerModel}
+) where {T <: PSY.ThermalGen, S <: PM.AbstractPowerModel, U <: Union{ThermalStandardUCOutages, ThermalBasicUCOutages}}
     parameters = PSI.model_has_parameters(optimization_container)
     resolution = PSI.model_resolution(optimization_container)
     initial_conditions_on =
