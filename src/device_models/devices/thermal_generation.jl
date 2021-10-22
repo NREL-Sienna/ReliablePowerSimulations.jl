@@ -4,6 +4,7 @@ struct ThermalBasicUCOutages <: PSI.AbstractStandardUnitCommitment end
 struct ThermalDispatchOutages <: AbstractThermalOutageDispatchFormulation end
 struct ThermalRampLimitedOutages <: AbstractThermalOutageDispatchFormulation end
 struct ThermalNoMinOutages <: AbstractThermalOutageDispatchFormulation end
+struct ThermalNoMinRampLimitedOutages <: AbstractThermalOutageDispatchFormulation end
 
 ############## AuxiliaryOnVariable, ThermalGen ####################
 PSI.get_variable_binary(::AuxiliaryOnVariable, ::Type{<:PSY.ThermalGen}, _) = false
