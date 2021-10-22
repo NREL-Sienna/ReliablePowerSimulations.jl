@@ -99,10 +99,6 @@ function device_duration_parameters_outage!(
         for cont in constraint_info
             name = PSI.get_component_name(cont)
 
-            param[name, t] =
-                PJ.add_parameter(optimization_container.JuMPmodel, cont.timeseries[t])
-            multiplier[name, t] = cont.multiplier
-
             # Minimum Up-time Constraint
             expr_up =
                 JuMP.GenericAffExpr{Float64, PSI._variable_type(optimization_container)}(0)

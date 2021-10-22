@@ -77,7 +77,6 @@ function ramp_constraints!(
         for r in data
             PSI.add_device_services!(r, r.ic_power.device, model)
         end
-        # Here goes the reactive power ramp limits when versions for AC and DC are added
         device_linear_rateofchange_outages!(
             optimization_container,
             data,
