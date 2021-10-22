@@ -14,7 +14,8 @@ function device_linear_rateofchange_outages!(
 
     set_name = [PSI.get_component_name(r) for r in rate_data]
     con_up = PSI.add_cons_container!(optimization_container, up_name, set_name, time_steps)
-    con_down = PSI.add_cons_container!(optimization_container, down_name, set_name, time_steps)
+    con_down =
+        PSI.add_cons_container!(optimization_container, down_name, set_name, time_steps)
     container_outage = PSI.get_parameter_container(optimization_container, update_ref)
     outage_parameter = PSI.get_parameter_array(container_outage)
     multiplier = PSI.get_multiplier_array(container_outage)
@@ -45,7 +46,8 @@ function device_linear_rateofchange_outages!(
         end
         con_down[name, 1] = JuMP.@constraint(
             optimization_container.JuMPmodel,
-            ic_power - expression_lb <= r.ramp_limits.down + (r.limits.max  - outage_parameter[name, 1] * r.limits.max)
+            ic_power - expression_lb <=
+            r.ramp_limits.down + (r.limits.max - outage_parameter[name, 1] * r.limits.max)
         )
     end
 
@@ -72,13 +74,13 @@ function device_linear_rateofchange_outages!(
         end
         con_down[name, t] = JuMP.@constraint(
             optimization_container.JuMPmodel,
-            variable[name, t - 1] - expression_lb <= r.ramp_limits.down + (r.limits.max  - outage_parameter[name, t]*r.limits.max)
+            variable[name, t - 1] - expression_lb <=
+            r.ramp_limits.down + (r.limits.max - outage_parameter[name, t] * r.limits.max)
         )
     end
 
     return
 end
-
 
 function device_mixedinteger_rateofchange_outages!(
     optimization_container::PSI.OptimizationContainer,
@@ -98,14 +100,15 @@ function device_mixedinteger_rateofchange_outages!(
 
     set_name = [PSI.get_component_name(r) for r in rate_data]
     con_up = PSI.add_cons_container!(optimization_container, up_name, set_name, time_steps)
-    con_down = PSI.add_cons_container!(optimization_container, down_name, set_name, time_steps)
+    con_down =
+        PSI.add_cons_container!(optimization_container, down_name, set_name, time_steps)
     container_outage = PSI.get_parameter_container(optimization_container, update_ref)
     outage_parameter = PSI.get_parameter_array(container_outage)
     multiplier = PSI.get_multiplier_array(container_outage)
 
     for r in rate_data
         name = PSI.get_component_name(r)
-        ic_power =PSI.get_value(PSI.get_ic_power(r))
+        ic_power = PSI.get_value(PSI.get_ic_power(r))
         @debug "add rate_of_change_constraint" name ic_power
         @assert (parameters && isa(ic_power, PJ.ParameterRef)) || !parameters
         expression_ub = JuMP.AffExpr(0.0, variable[name, 1] => 1.0)
@@ -131,7 +134,9 @@ function device_mixedinteger_rateofchange_outages!(
         con_down[name, 1] = JuMP.@constraint(
             optimization_container.JuMPmodel,
             (ic_power) - expression_lb <=
-            r.ramp_limits.down + r.limits.min * varstop[name, 1] + (r.limits.max  - outage_parameter[name, 1]*r.limits.max ) 
+            r.ramp_limits.down +
+            r.limits.min * varstop[name, 1] +
+            (r.limits.max - outage_parameter[name, 1] * r.limits.max)
         )
     end
 
@@ -160,7 +165,9 @@ function device_mixedinteger_rateofchange_outages!(
         con_down[name, t] = JuMP.@constraint(
             optimization_container.JuMPmodel,
             variable[name, t - 1] - expression_lb <=
-            r.ramp_limits.down + r.limits.min * varstop[name, t] + (r.limits.max  - outage_parameter[name, t]*r.limits.max ) 
+            r.ramp_limits.down +
+            r.limits.min * varstop[name, t] +
+            (r.limits.max - outage_parameter[name, t] * r.limits.max)
         )
     end
 

@@ -1,4 +1,5 @@
-abstract type AbstractThermalOutageDispatchFormulation <: PSI.AbstractThermalDispatchFormulation end
+abstract type AbstractThermalOutageDispatchFormulation <:
+              PSI.AbstractThermalDispatchFormulation end
 struct ThermalStandardUCOutages <: PSI.AbstractStandardUnitCommitment end
 struct ThermalBasicUCOutages <: PSI.AbstractStandardUnitCommitment end
 struct ThermalDispatchOutages <: AbstractThermalOutageDispatchFormulation end
@@ -8,7 +9,8 @@ struct ThermalNoMinRampLimitedOutages <: AbstractThermalOutageDispatchFormulatio
 
 ############## AuxiliaryOnVariable, ThermalGen ####################
 PSI.get_variable_binary(::AuxiliaryOnVariable, ::Type{<:PSY.ThermalGen}, _) = false
-PSI.get_variable_initial_value(::AuxiliaryOnVariable, d::PSY.ThermalGen, _) = PSY.get_status(d) ? 1.0 : 0.0
+PSI.get_variable_initial_value(::AuxiliaryOnVariable, d::PSY.ThermalGen, _) =
+    PSY.get_status(d) ? 1.0 : 0.0
 
 PSI.get_variable_lower_bound(::AuxiliaryOnVariable, d::PSY.ThermalGen, _) = 0.0
 PSI.get_variable_upper_bound(::AuxiliaryOnVariable, d::PSY.ThermalGen, _) = 1.0
@@ -97,11 +99,17 @@ function time_constraints!(
     model::PSI.DeviceModel{T, U},
     ::Type{S},
     feedforward::Union{Nothing, PSI.AbstractAffectFeedForward},
-) where {T <: PSY.ThermalGen, S <: PM.AbstractPowerModel, U <: Union{ThermalStandardUCOutages, ThermalBasicUCOutages}}
+) where {
+    T <: PSY.ThermalGen,
+    S <: PM.AbstractPowerModel,
+    U <: Union{ThermalStandardUCOutages, ThermalBasicUCOutages},
+}
     parameters = PSI.model_has_parameters(optimization_container)
     resolution = PSI.model_resolution(optimization_container)
-    initial_conditions_on =
-        PSI.get_initial_conditions(optimization_container, PSI.ICKey(PSI.InitialTimeDurationOn, T))
+    initial_conditions_on = PSI.get_initial_conditions(
+        optimization_container,
+        PSI.ICKey(PSI.InitialTimeDurationOn, T),
+    )
     initial_conditions_off = PSI.get_initial_conditions(
         optimization_container,
         PSI.ICKey(PSI.InitialTimeDurationOff, T),
@@ -159,7 +167,11 @@ function outage_constraints!(
     model::PSI.DeviceModel{T, D},
     ::Type{S},
     feedforward::Union{Nothing, PSI.AbstractAffectFeedForward},
-) where {T <: PSY.ThermalGen, S <: PM.AbstractPowerModel, D <: Union{ThermalStandardUCOutages, ThermalBasicUCOutages}}
+) where {
+    T <: PSY.ThermalGen,
+    S <: PM.AbstractPowerModel,
+    D <: Union{ThermalStandardUCOutages, ThermalBasicUCOutages},
+}
     parameters = PSI.model_has_parameters(optimization_container)
     resolution = PSI.model_resolution(optimization_container)
     # initial_conditions =
@@ -215,7 +227,11 @@ function outage_constraints!(
     model::PSI.DeviceModel{T, D},
     ::Type{S},
     feedforward::Union{Nothing, PSI.AbstractAffectFeedForward},
-) where {T <: PSY.ThermalGen, S <: PM.AbstractPowerModel, D <: AbstractThermalOutageDispatchFormulation}
+) where {
+    T <: PSY.ThermalGen,
+    S <: PM.AbstractPowerModel,
+    D <: AbstractThermalOutageDispatchFormulation,
+}
     parameters = PSI.model_has_parameters(optimization_container)
     resolution = PSI.model_resolution(optimization_container)
     # initial_conditions =
@@ -257,14 +273,17 @@ function outage_constraints!(
     return
 end
 
-
 function add_outage_parameter!(
     optimization_container::PSI.OptimizationContainer,
     devices::IS.FlattenIteratorWrapper{T},
     model::PSI.DeviceModel{T, D},
     ::Type{S},
     feedforward::Union{Nothing, PSI.AbstractAffectFeedForward},
-) where {T <: PSY.ThermalGen, S <: PM.AbstractPowerModel, D <: AbstractThermalOutageDispatchFormulation}
+) where {
+    T <: PSY.ThermalGen,
+    S <: PM.AbstractPowerModel,
+    D <: AbstractThermalOutageDispatchFormulation,
+}
     parameters = PSI.model_has_parameters(optimization_container)
     resolution = PSI.model_resolution(optimization_container)
     time_steps = PSI.model_time_steps(optimization_container)
@@ -278,17 +297,15 @@ function add_outage_parameter!(
     )
     param = PSI.get_parameter_array(container_outage)
     multiplier = PSI.get_multiplier_array(container_outage)
-    
+
     for d in devices, t in time_steps
         name = PSY.get_name(d)
         ts_vector = PSI.get_time_series(optimization_container, d, forecast_label)
-        param[name, t] =
-            PJ.add_parameter(optimization_container.JuMPmodel, ts_vector[t])
+        param[name, t] = PJ.add_parameter(optimization_container.JuMPmodel, ts_vector[t])
         multiplier[name, t] = 1.0
     end
     return
 end
-
 
 function PSI.initial_conditions!(
     optimization_container::PSI.OptimizationContainer,

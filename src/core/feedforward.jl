@@ -17,7 +17,6 @@ end
 
 PSI.get_binary_source_problem(p::SemiContinuousOutagesFF) = p.binary_source_problem
 
-
 function semicontinuousrange_outages_ff(
     optimization_container::PSI.OptimizationContainer,
     cons_name::Symbol,
@@ -30,28 +29,41 @@ function semicontinuousrange_outages_ff(
     ub_name = PSI.middle_rename(cons_name, PSI.PSI_NAME_DELIMITER, "ub")
     lb_name = PSI.middle_rename(cons_name, PSI.PSI_NAME_DELIMITER, "lb")
     variable = PSI.get_variable(optimization_container, var_name)
-    varon = PSI.get_variable(optimization_container, PSI.make_variable_name(AUXILIARY_ON, T))
+    varon =
+        PSI.get_variable(optimization_container, PSI.make_variable_name(AUXILIARY_ON, T))
     # Used to make sure the names are consistent between the variable and the infos
     axes = JuMP.axes(variable)
     set_names = [PSI.get_component_name(ci) for ci in constraint_infos]
     @assert axes[2] == time_steps
-    commitment_container = PSI.add_param_container!(optimization_container, commitment_reference, set_names)
+    commitment_container =
+        PSI.add_param_container!(optimization_container, commitment_reference, set_names)
     commitment_multiplier = PSI.get_multiplier_array(commitment_container)
     commitment_param = PSI.get_parameter_array(commitment_container)
 
-    outage_container = PSI.get_parameter_container(
-        optimization_container,
-        outage_reference,
-    )
+    outage_container = PSI.get_parameter_container(optimization_container, outage_reference)
     outage_param = PSI.get_parameter_array(outage_container)
-
 
     con_ub = PSI.add_cons_container!(optimization_container, ub_name, set_names, time_steps)
     con_lb = PSI.add_cons_container!(optimization_container, lb_name, set_names, time_steps)
 
-    cons_aux_lb = PSI.add_cons_container!(optimization_container, PSI.make_constraint_name(AUXILIARY_ON_RANGE_LB, T), set_names, time_steps)
-    cons_aux_ub = PSI.add_cons_container!(optimization_container,  PSI.make_constraint_name(AUXILIARY_ON_RANGE_UB, T), set_names, time_steps)
-    cons_aux = PSI.add_cons_container!(optimization_container, PSI.make_constraint_name(AUXILIARY_ON_RANGE, T), set_names, time_steps)
+    cons_aux_lb = PSI.add_cons_container!(
+        optimization_container,
+        PSI.make_constraint_name(AUXILIARY_ON_RANGE_LB, T),
+        set_names,
+        time_steps,
+    )
+    cons_aux_ub = PSI.add_cons_container!(
+        optimization_container,
+        PSI.make_constraint_name(AUXILIARY_ON_RANGE_UB, T),
+        set_names,
+        time_steps,
+    )
+    cons_aux = PSI.add_cons_container!(
+        optimization_container,
+        PSI.make_constraint_name(AUXILIARY_ON_RANGE, T),
+        set_names,
+        time_steps,
+    )
 
     for constraint_info in constraint_infos
         name = PSI.get_component_name(constraint_info)
@@ -87,11 +99,17 @@ function semicontinuousrange_outages_ff(
             )
 
             cons_aux_lb[name, t] = JuMP.@constraint(
-                optimization_container.JuMPmodel, varon[name, t] <= commitment_param[name])
+                optimization_container.JuMPmodel,
+                varon[name, t] <= commitment_param[name]
+            )
             cons_aux_ub[name, t] = JuMP.@constraint(
-                optimization_container.JuMPmodel, varon[name, t] <= outage_param[name, t])
+                optimization_container.JuMPmodel,
+                varon[name, t] <= outage_param[name, t]
+            )
             cons_aux[name, t] = JuMP.@constraint(
-                optimization_container.JuMPmodel, varon[name, t] >= outage_param[name, t] + commitment_param[name] - 1)
+                optimization_container.JuMPmodel,
+                varon[name, t] >= outage_param[name, t] + commitment_param[name] - 1
+            )
         end
     end
 
@@ -106,13 +124,12 @@ function semicontinuousrange_outages_ff(
     return
 end
 
-
 function PSI.feedforward!(
     optimization_container::PSI.OptimizationContainer,
     devices::IS.FlattenIteratorWrapper{T},
     model::PSI.DeviceModel{T, D},
     ff_model::SemiContinuousOutagesFF,
-) where {T <: PSY.StaticInjection, D <:PSI.AbstractDeviceFormulation}
+) where {T <: PSY.StaticInjection, D <: PSI.AbstractDeviceFormulation}
     bin_var = PSI.make_variable_name(PSI.get_binary_source_problem(ff_model), T)
     parameter_ref = PSI.UpdateRef{JuMP.VariableRef}(bin_var)
     outage_ref = PSI.UpdateRef{T}(OUTAGE, "outage")

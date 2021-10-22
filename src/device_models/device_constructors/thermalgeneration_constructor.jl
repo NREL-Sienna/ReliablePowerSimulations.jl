@@ -81,20 +81,8 @@ function PSI.construct_device!(
         S,
         PSI.get_feedforward(model),
     )
-    ramp_constraints!(
-        optimization_container,
-        devices,
-        model,
-        S,
-        PSI.get_feedforward(model),
-    )
-    time_constraints!(
-        optimization_container,
-        devices,
-        model,
-        S,
-        PSI.get_feedforward(model),
-    )
+    ramp_constraints!(optimization_container, devices, model, S, PSI.get_feedforward(model))
+    time_constraints!(optimization_container, devices, model, S, PSI.get_feedforward(model))
     PSI.feedforward!(optimization_container, devices, model, PSI.get_feedforward(model))
 
     # Cost Function
@@ -177,20 +165,8 @@ function PSI.construct_device!(
         S,
         PSI.get_feedforward(model),
     )
-    ramp_constraints!(
-        optimization_container,
-        devices,
-        model,
-        S,
-        PSI.get_feedforward(model),
-    )
-    time_constraints!(
-        optimization_container,
-        devices,
-        model,
-        S,
-        PSI.get_feedforward(model),
-    )
+    ramp_constraints!(optimization_container, devices, model, S, PSI.get_feedforward(model))
+    time_constraints!(optimization_container, devices, model, S, PSI.get_feedforward(model))
     PSI.feedforward!(optimization_container, devices, model, PSI.get_feedforward(model))
 
     # Cost Function
@@ -285,13 +261,7 @@ function PSI.construct_device!(
         S,
         PSI.get_feedforward(model),
     )
-    ramp_constraints!(
-        optimization_container,
-        devices,
-        model,
-        S,
-        PSI.get_feedforward(model),
-    )
+    ramp_constraints!(optimization_container, devices, model, S, PSI.get_feedforward(model))
     PSI.feedforward!(optimization_container, devices, model, PSI.get_feedforward(model))
 
     # Cost Function
@@ -374,13 +344,7 @@ function PSI.construct_device!(
         S,
         PSI.get_feedforward(model),
     )
-    ramp_constraints!(
-        optimization_container,
-        devices,
-        model,
-        S,
-        PSI.get_feedforward(model),
-    )
+    ramp_constraints!(optimization_container, devices, model, S, PSI.get_feedforward(model))
 
     PSI.feedforward!(optimization_container, devices, model, PSI.get_feedforward(model))
 
@@ -449,7 +413,13 @@ function PSI.construct_device!(
     feedforward!(optimization_container, devices, model, PSI.get_feedforward(model))
 
     # Cost Function
-    PSI.cost_function!(optimization_container, devices, model, S, PSI.get_feedforward(model))
+    PSI.cost_function!(
+        optimization_container,
+        devices,
+        model,
+        S,
+        PSI.get_feedforward(model),
+    )
 
     return
 end
@@ -476,7 +446,7 @@ function PSI.construct_device!(
 
     # Initial Conditions
     PSI.initial_conditions!(optimization_container, devices, D())
-    
+
     # Constraints
     PSI.add_constraints!(
         optimization_container,
@@ -497,7 +467,13 @@ function PSI.construct_device!(
     PSI.feedforward!(optimization_container, devices, model, PSI.get_feedforward(model))
 
     # Cost Function
-    PSI.cost_function!(optimization_container, devices, model, S, PSI.get_feedforward(model))
+    PSI.cost_function!(
+        optimization_container,
+        devices,
+        model,
+        S,
+        PSI.get_feedforward(model),
+    )
 
     return
 end
@@ -556,7 +532,13 @@ function PSI.construct_device!(
     feedforward!(optimization_container, devices, model, PSI.get_feedforward(model))
 
     # Cost Function
-    PSI.cost_function!(optimization_container, devices, model, S, PSI.get_feedforward(model))
+    PSI.cost_function!(
+        optimization_container,
+        devices,
+        model,
+        S,
+        PSI.get_feedforward(model),
+    )
 
     return
 end
@@ -569,7 +551,7 @@ function PSI.construct_device!(
 ) where {
     T <: PSY.ThermalGen,
     S <: PM.AbstractActivePowerModel,
-    V <: Union{ThermalNoMinRampLimitedOutages, ThermalRampLimitedOutages}
+    V <: Union{ThermalNoMinRampLimitedOutages, ThermalRampLimitedOutages},
 }
     devices = PSI.get_available_components(T, sys)
 
@@ -583,7 +565,7 @@ function PSI.construct_device!(
 
     # Initial Conditions
     PSI.initial_conditions!(optimization_container, devices, V())
-    
+
     # Constraints
     PSI.add_constraints!(
         optimization_container,
@@ -605,7 +587,13 @@ function PSI.construct_device!(
     PSI.feedforward!(optimization_container, devices, model, PSI.get_feedforward(model))
 
     # Cost Function
-    PSI.cost_function!(optimization_container, devices, model, S, PSI.get_feedforward(model))
+    PSI.cost_function!(
+        optimization_container,
+        devices,
+        model,
+        S,
+        PSI.get_feedforward(model),
+    )
 
     return
 end

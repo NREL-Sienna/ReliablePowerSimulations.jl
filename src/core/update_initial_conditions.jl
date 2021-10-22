@@ -24,7 +24,12 @@ function _make_initial_condition_outage_status(
     value,
     cache = nothing,
 ) where {T <: PSY.Component}
-    return PSI.InitialCondition(device, PSI._get_ref_active_power(T, container), value, cache)
+    return PSI.InitialCondition(
+        device,
+        PSI._get_ref_active_power(T, container),
+        value,
+        cache,
+    )
 end
 
 function _get_ref_outage_status(
