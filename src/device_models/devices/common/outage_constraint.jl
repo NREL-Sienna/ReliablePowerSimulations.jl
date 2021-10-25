@@ -3,14 +3,18 @@ function device_outage!(
     constraint_info::Vector{DeviceOutageConstraintInfo},
     cons_name::Symbol,
     var_names::Tuple{Symbol, Symbol, Symbol},
+    outage_variable::Symbol,
 )
     time_steps = PSI.model_time_steps(optimization_container)
     varon = PSI.get_variable(optimization_container, var_names[1])
     varstop = PSI.get_variable(optimization_container, var_names[2])
     varstart = PSI.get_variable(optimization_container, var_names[3])
+    var_outage = PSI.get_variable(optimization_container, outage_variable)
     name_on = PSI.middle_rename(cons_name, PSI.PSI_NAME_DELIMITER, "on")
     name_off = PSI.middle_rename(cons_name, PSI.PSI_NAME_DELIMITER, "off")
     set_names = [PSI.get_component_name(ic) for ic in constraint_info]
+    con_outage =
+        PSI.add_cons_container!(optimization_container, cons_name, set_names, time_steps)
     con_stop =
         PSI.add_cons_container!(optimization_container, name_off, set_names, time_steps)
     con_start =
@@ -20,12 +24,16 @@ function device_outage!(
         name = PSI.get_component_name(cont)
         con_stop[name, 1] = JuMP.@constraint(
             optimization_container.JuMPmodel,
-            # varstop[name, 1] >= (cont.initial_condition.value - cont.timeseries[1]) * varon[name, 1]
-            varstop[name, 1] >= (1.0 - cont.timeseries[1]) * varon[name, 1]
+            varstop[name, 1] >=
+            (cont.initial_condition.value - cont.timeseries[1]) * varon[name, 1]
         )
         con_start[name, 1] = JuMP.@constraint(
             optimization_container.JuMPmodel,
             varstart[name, 1] <= cont.timeseries[1]
+        )
+        con_outage[name, 1] = JuMP.@constraint(
+            optimization_container.JuMPmodel,
+            var_outage[name, 1] == cont.timeseries[1]
         )
         for t in time_steps[2:end]
             con_stop[name, t] = JuMP.@constraint(
@@ -36,6 +44,10 @@ function device_outage!(
             con_start[name, t] = JuMP.@constraint(
                 optimization_container.JuMPmodel,
                 varstart[name, t] <= cont.timeseries[t]
+            )
+            con_outage[name, t] = JuMP.@constraint(
+                optimization_container.JuMPmodel,
+                var_outage[name, t] == cont.timeseries[t]
             )
         end
     end
@@ -48,17 +60,21 @@ function device_outage_parameter!(
     cons_name::Symbol,
     var_names::Tuple{Symbol, Symbol, Symbol},
     param_reference::PSI.UpdateRef,
+    outage_variable::Symbol,
 )
     time_steps = PSI.model_time_steps(optimization_container)
     varon = PSI.get_variable(optimization_container, var_names[1])
     varstop = PSI.get_variable(optimization_container, var_names[2])
     varstart = PSI.get_variable(optimization_container, var_names[3])
+    var_outage = PSI.get_variable(optimization_container, outage_variable)
     name_on = PSI.middle_rename(cons_name, PSI.PSI_NAME_DELIMITER, "on")
     name_start = PSI.middle_rename(cons_name, PSI.PSI_NAME_DELIMITER, "start")
     name_stop = PSI.middle_rename(cons_name, PSI.PSI_NAME_DELIMITER, "stop")
 
     set_names = [PSI.get_component_name(ic) for ic in constraint_info]
     con_on = PSI.add_cons_container!(optimization_container, name_on, set_names, time_steps)
+    con_outage =
+        PSI.add_cons_container!(optimization_container, cons_name, set_names, time_steps)
     con_stop =
         PSI.add_cons_container!(optimization_container, name_stop, set_names, time_steps)
     con_start =
@@ -78,6 +94,7 @@ function device_outage_parameter!(
         param[name, 1] =
             PJ.add_parameter(optimization_container.JuMPmodel, cont.timeseries[1])
         multiplier[name, 1] = cont.multiplier
+        ic_outage = PSI.get_value(get_initial_condition(cont))
         varz = JuMP.@variable(
             optimization_container.JuMPmodel,
             base_name = "outage_z_{$(name), 1}"
@@ -89,12 +106,12 @@ function device_outage_parameter!(
         JuMP.@constraint(optimization_container.JuMPmodel, varz <= varon[name, 1])
         JuMP.@constraint(optimization_container.JuMPmodel, vary <= varon[name, 1])
 
-        JuMP.@constraint(optimization_container.JuMPmodel, varz <= 1.0)
+        JuMP.@constraint(optimization_container.JuMPmodel, varz <= ic_outage) # 
         JuMP.@constraint(optimization_container.JuMPmodel, vary <= param[name, 1])
 
         JuMP.@constraint(
             optimization_container.JuMPmodel,
-            varz >= 1.0 + varon[name, 1] - 1.0
+            varz >= ic_outage + varon[name, 1] - 1.0
         )
         JuMP.@constraint(
             optimization_container.JuMPmodel,
@@ -113,6 +130,11 @@ function device_outage_parameter!(
             optimization_container.JuMPmodel,
             varstop[name, 1] >= varz - vary
         )
+        con_outage[name, 1] = JuMP.@constraint(
+            optimization_container.JuMPmodel,
+            var_outage[name, 1] == param[name, 1]
+        )
+
         for t in time_steps[2:end]
             param[name, t] =
                 PJ.add_parameter(optimization_container.JuMPmodel, cont.timeseries[t])
@@ -150,6 +172,10 @@ function device_outage_parameter!(
             con_on[name, t] = JuMP.@constraint(
                 optimization_container.JuMPmodel,
                 varon[name, t] <= param[name, t]
+            )
+            con_outage[name, t] = JuMP.@constraint(
+                optimization_container.JuMPmodel,
+                var_outage[name, t] == param[name, t]
             )
         end
     end

@@ -44,6 +44,12 @@ function PSI.construct_device!(
         devices,
         ThermalStandardUCOutages(),
     )
+    PSI.add_variables!(
+        optimization_container,
+        OutageVariable,
+        devices,
+        ThermalStandardUCOutages(),
+    )
 
     # Initial Conditions
     PSI.initial_conditions!(optimization_container, devices, ThermalStandardUCOutages())
@@ -137,7 +143,12 @@ function PSI.construct_device!(
         devices,
         ThermalStandardUCOutages(),
     )
-
+    PSI.add_variables!(
+        optimization_container,
+        OutageVariable,
+        devices,
+        ThermalStandardUCOutages(),
+    )
     # Initial Conditions
     PSI.initial_conditions!(optimization_container, devices, ThermalStandardUCOutages())
 
@@ -224,7 +235,12 @@ function PSI.construct_device!(
         devices,
         ThermalBasicUCOutages(),
     )
-
+    PSI.add_variables!(
+        optimization_container,
+        OutageVariable,
+        devices,
+        ThermalBasicUCOutages(),
+    )
     # Initial Conditions
     PSI.initial_conditions!(optimization_container, devices, ThermalBasicUCOutages())
 
@@ -316,6 +332,12 @@ function PSI.construct_device!(
         devices,
         ThermalBasicUCOutages(),
     )
+    PSI.add_variables!(
+        optimization_container,
+        OutageVariable,
+        devices,
+        ThermalBasicUCOutages(),
+    )
 
     # Initial Conditions
     PSI.initial_conditions!(optimization_container, devices, ThermalBasicUCOutages())
@@ -380,6 +402,7 @@ function PSI.construct_device!(
     PSI.add_variables!(optimization_container, PSI.ActivePowerVariable, devices, D())
     PSI.add_variables!(optimization_container, PSI.ReactivePowerVariable, devices, D())
     PSI.add_variables!(optimization_container, AuxiliaryOnVariable, devices, D())
+    PSI.add_variables!(optimization_container, OutageVariable, devices, D())
 
     # Initial Conditions
     PSI.initial_conditions!(optimization_container, devices, D())
@@ -443,6 +466,7 @@ function PSI.construct_device!(
     # Variables
     PSI.add_variables!(optimization_container, PSI.ActivePowerVariable, devices, D())
     PSI.add_variables!(optimization_container, AuxiliaryOnVariable, devices, D())
+    PSI.add_variables!(optimization_container, OutageVariable, devices, D())
 
     # Initial Conditions
     PSI.initial_conditions!(optimization_container, devices, D())
@@ -498,6 +522,7 @@ function PSI.construct_device!(
     PSI.add_variables!(optimization_container, PSI.ActivePowerVariable, devices, V())
     PSI.add_variables!(optimization_container, PSI.ReactivePowerVariable, devices, V())
     PSI.add_variables!(optimization_container, AuxiliaryOnVariable, devices, V())
+    PSI.add_variables!(optimization_container, OutageVariable, devices, V())
 
     # Initial Conditions
     PSI.initial_conditions!(optimization_container, devices, V())
@@ -562,6 +587,7 @@ function PSI.construct_device!(
     # Variables
     PSI.add_variables!(optimization_container, PSI.ActivePowerVariable, devices, V())
     PSI.add_variables!(optimization_container, AuxiliaryOnVariable, devices, V())
+    PSI.add_variables!(optimization_container, OutageVariable, devices, V())
 
     # Initial Conditions
     PSI.initial_conditions!(optimization_container, devices, V())

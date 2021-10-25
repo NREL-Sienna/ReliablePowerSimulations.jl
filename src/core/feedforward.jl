@@ -108,7 +108,7 @@ function semicontinuousrange_outages_ff(
             )
             cons_aux[name, t] = JuMP.@constraint(
                 optimization_container.JuMPmodel,
-                varon[name, t] >= outage_param[name, t] + commitment_param[name] - 1
+                varon[name, t] >= outage_param[name, t] + commitment_param[name] - 1.0
             )
         end
     end
