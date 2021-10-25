@@ -1,6 +1,6 @@
 function device_linear_rateofchange_outages!(
     optimization_container::PSI.OptimizationContainer,
-    rate_data::Vector{PSI.DeviceRampConstraintInfo},
+    rate_data::Vector{DeviceOutageRampConstraintInfo},
     cons_name::Symbol,
     var_name::Symbol,
     update_ref::PSI.UpdateRef,
@@ -22,7 +22,8 @@ function device_linear_rateofchange_outages!(
 
     for r in rate_data
         name = PSI.get_component_name(r)
-        ic_power = PSI.get_value(PSI.get_ic_power(r))
+        ic_power = PSI.get_value(get_ic_power(r))
+        ic_outage = PSI.get_value(get_ic_outage(r))
         @debug "add rate_of_change_constraint" name ic_power
         @assert (parameters && isa(ic_power, PJ.ParameterRef)) || !parameters
         expression_ub = JuMP.AffExpr(0.0, variable[name, 1] => 1.0)
@@ -34,7 +35,8 @@ function device_linear_rateofchange_outages!(
         end
         con_up[name, 1] = JuMP.@constraint(
             optimization_container.JuMPmodel,
-            expression_ub - ic_power <= r.ramp_limits.up
+            expression_ub - ic_power <=
+            r.ramp_limits.up + (r.limits.min - ic_outage * r.limits.min)
         )
         expression_lb = JuMP.AffExpr(0.0, variable[name, 1] => 1.0)
         for val in r.additional_terms_lb
@@ -62,7 +64,9 @@ function device_linear_rateofchange_outages!(
         end
         con_up[name, t] = JuMP.@constraint(
             optimization_container.JuMPmodel,
-            expression_ub - variable[name, t - 1] <= r.ramp_limits.up
+            expression_ub - variable[name, t - 1] <=
+            r.ramp_limits.up +
+            (r.limits.min - outage_parameter[name, t - 1] * r.limits.min)
         )
         expression_lb = JuMP.AffExpr(0.0, variable[name, t] => 1.0)
         for val in r.additional_terms_lb
@@ -84,7 +88,7 @@ end
 
 function device_mixedinteger_rateofchange_outages!(
     optimization_container::PSI.OptimizationContainer,
-    rate_data::Vector{PSI.DeviceRampConstraintInfo},
+    rate_data::Vector{DeviceOutageRampConstraintInfo},
     cons_name::Symbol,
     var_names::Tuple{Symbol, Symbol, Symbol},
     update_ref::PSI.UpdateRef,
@@ -108,7 +112,8 @@ function device_mixedinteger_rateofchange_outages!(
 
     for r in rate_data
         name = PSI.get_component_name(r)
-        ic_power = PSI.get_value(PSI.get_ic_power(r))
+        ic_power = PSI.get_value(get_ic_power(r))
+        ic_outage = PSI.get_value(get_ic_outage(r))
         @debug "add rate_of_change_constraint" name ic_power
         @assert (parameters && isa(ic_power, PJ.ParameterRef)) || !parameters
         expression_ub = JuMP.AffExpr(0.0, variable[name, 1] => 1.0)
@@ -121,7 +126,9 @@ function device_mixedinteger_rateofchange_outages!(
         con_up[name, 1] = JuMP.@constraint(
             optimization_container.JuMPmodel,
             expression_ub - (ic_power) <=
-            r.ramp_limits.up + r.limits.max * varstart[name, 1]
+            r.ramp_limits.up +
+            r.limits.max * varstart[name, 1] +
+            (r.limits.min - ic_outage * r.limits.min)
         )
         expression_lb = JuMP.AffExpr(0.0, variable[name, 1] => 1.0)
         for val in r.additional_terms_lb
@@ -152,7 +159,9 @@ function device_mixedinteger_rateofchange_outages!(
         con_up[name, t] = JuMP.@constraint(
             optimization_container.JuMPmodel,
             expression_ub - variable[name, t - 1] <=
-            r.ramp_limits.up + r.limits.max * varstart[name, t]
+            r.ramp_limits.up +
+            r.limits.max * varstart[name, t] +
+            (r.limits.min - outage_parameter[name, t - 1] * r.limits.min)
         )
         expression_lb = JuMP.AffExpr(0.0, variable[name, t] => 1.0)
         for val in r.additional_terms_lb
