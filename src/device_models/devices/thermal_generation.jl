@@ -155,6 +155,64 @@ function ramp_constraints!(
     return
 end
 
+
+function _get_data_for_tdc_outages(
+    optimization_container::PSI.OptimizationContainer,
+    ::Type{T},
+) where {T <: PSY.ThermalGen}
+    resolution = PSI.model_resolution(optimization_container)
+    steps_per_hour = 60 / Dates.value(Dates.Minute(resolution))
+    fraction_of_hour = 1 / steps_per_hour
+    initial_conditions_on = PSI.get_initial_conditions(
+        optimization_container,
+        PSI.ICKey(PSI.InitialTimeDurationOn, T),
+    )
+    initial_conditions_off = PSI.get_initial_conditions(
+        optimization_container,
+        PSI.ICKey(PSI.InitialTimeDurationOff, T),
+    )
+    initial_conditions_outage = PSI.get_initial_conditions(
+        optimization_container,
+        PSI.ICKey(InitialOutageStatus, T),
+    )
+    lenght_devices_on = length(initial_conditions_on)
+    lenght_devices_off = length(initial_conditions_off)
+    lenght_devices_outage = length(initial_conditions_outage)
+    @assert lenght_devices_off == lenght_devices_on == lenght_devices_outage
+    data = Vector{DeviceDurationConstraintInfo}(undef, lenght_devices_on)
+    idx = 0
+    for (ix, ic) in enumerate(initial_conditions_on)
+        g = ic.device
+        @assert g == initial_conditions_off[ix].device
+        @assert g == initial_conditions_outage[ix].device
+
+        time_limits = PSY.get_time_limits(g)
+        name = PSY.get_name(g)
+        if !(time_limits === nothing)
+            if (time_limits.up <= fraction_of_hour) & (time_limits.down <= fraction_of_hour)
+                @debug "Generator $(name) has a nonbinding time limits. Constraints Skipped"
+                continue
+            else
+                idx += 1
+            end
+            up_val = round(time_limits.up * steps_per_hour, RoundUp)
+            down_val = round(time_limits.down * steps_per_hour, RoundUp)
+            data[idx] = DeviceDurationConstraintInfo(
+                name,
+                (up = up_val, down = down_val),
+                (ic, initial_conditions_off[ix]),
+                initial_conditions_outage[ix],
+                1.0,
+                PSI.get_time_series(optimization_container, g, "outage"),
+            )
+        end
+    end
+    if idx < lenght_devices_on
+        deleteat!(data, (idx + 1):lenght_devices_on)
+    end
+    return data
+end
+
 function time_constraints!(
     optimization_container::PSI.OptimizationContainer,
     devices::IS.FlattenIteratorWrapper{T},
@@ -168,31 +226,9 @@ function time_constraints!(
 }
     parameters = PSI.model_has_parameters(optimization_container)
     resolution = PSI.model_resolution(optimization_container)
-    initial_conditions_on = PSI.get_initial_conditions(
-        optimization_container,
-        PSI.ICKey(PSI.InitialTimeDurationOn, T),
-    )
-    initial_conditions_off = PSI.get_initial_conditions(
-        optimization_container,
-        PSI.ICKey(PSI.InitialTimeDurationOff, T),
-    )
-    ini_conds, time_params =
-        PSI._get_data_for_tdc(initial_conditions_on, initial_conditions_off, resolution)
+    constraint_infos = _get_data_for_tdc_outages(optimization_container, T)
     forecast_label = "outage"
-    constraint_infos = Vector{DeviceDurationConstraintInfo}()
-    for (ix, ic) in enumerate(ini_conds[:, 1])
-        name = PSI.get_name(ic.device)
-        info = DeviceDurationConstraintInfo(
-            name,
-            time_params[ix],
-            Tuple(ini_conds[ix, :]),
-            1.0,
-            PSI.get_time_series(optimization_container, ic.device, forecast_label),
-        )
-        push!(constraint_infos, info)
-    end
-
-    if !(isempty(ini_conds))
+    if !(isempty(constraint_infos))
         if parameters
             device_duration_parameters_outage!(
                 optimization_container,

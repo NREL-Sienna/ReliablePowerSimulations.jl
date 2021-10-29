@@ -127,8 +127,7 @@ function device_mixedinteger_rateofchange_outages!(
             optimization_container.JuMPmodel,
             expression_ub - (ic_power) <=
             r.ramp_limits.up +
-            r.limits.max * varstart[name, 1] +
-            (r.limits.min - ic_outage * r.limits.min)
+            r.limits.max * varstart[name, 1]
         )
         expression_lb = JuMP.AffExpr(0.0, variable[name, 1] => 1.0)
         for val in r.additional_terms_lb
@@ -142,8 +141,7 @@ function device_mixedinteger_rateofchange_outages!(
             optimization_container.JuMPmodel,
             (ic_power) - expression_lb <=
             r.ramp_limits.down +
-            r.limits.min * varstop[name, 1] +
-            (r.limits.max - outage_parameter[name, 1] * r.limits.max)
+            r.limits.max * varstop[name, 1]
         )
     end
 
@@ -160,8 +158,7 @@ function device_mixedinteger_rateofchange_outages!(
             optimization_container.JuMPmodel,
             expression_ub - variable[name, t - 1] <=
             r.ramp_limits.up +
-            r.limits.max * varstart[name, t] +
-            (r.limits.min - outage_parameter[name, t - 1] * r.limits.min)
+            r.limits.max * varstart[name, t]
         )
         expression_lb = JuMP.AffExpr(0.0, variable[name, t] => 1.0)
         for val in r.additional_terms_lb
@@ -175,8 +172,7 @@ function device_mixedinteger_rateofchange_outages!(
             optimization_container.JuMPmodel,
             variable[name, t - 1] - expression_lb <=
             r.ramp_limits.down +
-            r.limits.min * varstop[name, t] +
-            (r.limits.max - outage_parameter[name, t] * r.limits.max)
+            r.limits.max * varstop[name, t]
         )
     end
 

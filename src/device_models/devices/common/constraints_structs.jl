@@ -2,6 +2,7 @@ struct DeviceDurationConstraintInfo <: PSI.AbstractStartConstraintInfo
     component_name::String
     duration_data::PSI.UpDown
     initial_duration::Tuple{PSI.InitialCondition, PSI.InitialCondition}
+    initial_outage::PSI.InitialCondition
     multiplier::Float64
     timeseries::Vector{Float64}
 end
@@ -9,6 +10,7 @@ end
 get_component_name(d::DeviceDurationConstraintInfo) = d.component_name
 get_duration_data(d::DeviceDurationConstraintInfo) = d.duration_data
 get_initial_duration(d::DeviceDurationConstraintInfo) = d.initial_duration
+get_initial_outage(d::DeviceDurationConstraintInfo) = d.initial_outage
 get_multiplier(d::DeviceDurationConstraintInfo) = d.multiplier
 get_timeseries(d::DeviceDurationConstraintInfo) = d.timeseries
 

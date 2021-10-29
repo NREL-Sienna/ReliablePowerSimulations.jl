@@ -54,6 +54,11 @@ function device_duration_look_ahead_outage!(
             if t <= cont.duration_data.down
                 expr_dn += last(cont.initial_duration).value
             end
+            if t == 1
+                expr_dn += (1 - cont.initial_outage.value) * cont.duration_data.down
+            else
+                expr_dn += (1 - cont.timeseries[t-1])* cont.duration_data.down
+            end
             con_down[name, t] = JuMP.@constraint(
                 optimization_container.JuMPmodel,
                 varstart[name, t] * cont.duration_data.down <=
@@ -127,6 +132,12 @@ function device_duration_parameters_outage!(
             end
             if t <= cont.duration_data.down
                 expr_dn += cont.initial_duration[2].value
+            end
+
+            if t == 1
+                expr_dn += (cont.duration_data.down -cont.initial_outage.value * cont.duration_data.down)
+            else
+                expr_dn += (cont.duration_data.down - param[name, t-1]* cont.duration_data.down)
             end
             con_down[name, t] = JuMP.@constraint(
                 optimization_container.JuMPmodel,
