@@ -38,6 +38,50 @@ function PSI.DeviceRangeConstraintSpec(
     return PSI.DeviceRangeConstraintSpec()
 end
 
+function PSI.DeviceRangeConstraintSpec(
+    ::Type{<:PSI.RangeConstraint},
+    ::Type{PSI.ActivePowerVariable},
+    ::Type{T},
+    ::Type{S},
+    ::Type{<:PSI.PM.AbstractPowerModel},
+    feedforward::Nothing,
+    use_parameters::Bool,
+    use_forecasts::Bool,
+) where {
+    T <: PSY.ThermalGen,
+    S <: Union{ThermalNoMinOutages, ThermalNoMinRampLimitedOutages},
+}
+    return PSI.DeviceRangeConstraintSpec(;
+        range_constraint_spec = PSI.RangeConstraintSpec(;
+            constraint_name = PSI.make_constraint_name(
+                PSI.RangeConstraint,
+                PSI.ActivePowerVariable,
+                T,
+            ),
+            variable_name = PSI.make_variable_name(PSI.ActivePowerVariable, T),
+            limits_func = x -> (min = 0.0, max = PSY.get_active_power_limits(x).max),
+            constraint_func = device_range!,
+            constraint_struct = PSI.DeviceRangeConstraintInfo,
+        ),
+        custom_optimization_container_func = custom_active_power_constraints!,
+    )
+end
+
+function custom_active_power_constraints!(
+    optimization_container::PSI.OptimizationContainer,
+    ::PSI.IS.FlattenIteratorWrapper{T},
+    ::Type{<:AbstractThermalOutageDispatchFormulation},
+) where {T <: PSY.ThermalGen}
+    var_key = PSI.make_variable_name(PSI.ActivePowerVariable, T)
+    variable = PSI.get_variable(optimization_container, var_key)
+    # If the variable was a lower bound != 0, not removing the LB can cause infeasibilities
+    for v in variable
+        if JuMP.has_lower_bound(v)
+            JuMP.set_lower_bound(v, 0.0)
+        end
+    end
+end
+
 function _get_data_for_rocc_outage(
     optimization_container::PSI.OptimizationContainer,
     ::Type{T},
@@ -154,7 +198,6 @@ function ramp_constraints!(
     end
     return
 end
-
 
 function _get_data_for_tdc_outages(
     optimization_container::PSI.OptimizationContainer,
@@ -362,8 +405,8 @@ function outage_constraints!(
                 constraint_infos,
                 PSI.make_constraint_name(OUTAGE, T),
                 PSI.make_variable_name(PSI.ACTIVE_POWER, T),
-                PSI.UpdateRef{T}(OUTAGE, forecast_label),
                 PSI.make_variable_name(OutageVariable, T),
+                PSI.UpdateRef{T}(OUTAGE, forecast_label),
             )
         else
             device_outage_ub!(
@@ -437,7 +480,6 @@ function PSI.initial_conditions!(
     return
 end
 
-
 function outage_status_initial_condition!(
     optimization_container::PSI.OptimizationContainer,
     devices::IS.FlattenIteratorWrapper{T},
@@ -453,5 +495,71 @@ function outage_status_initial_condition!(
         _get_outage_initial_value,
     )
 
+    return
+end
+
+function PSI.cost_function!(
+    optimization_container::PSI.OptimizationContainer,
+    devices::PSI.IS.FlattenIteratorWrapper{T},
+    ::PSI.DeviceModel{T, S},
+    ::Type{<:PSI.PM.AbstractPowerModel},
+    feedforward::Union{Nothing, PSI.AbstractAffectFeedForward},
+) where {
+    T <: PSY.ThermalGen,
+    S <: Union{ThermalNoMinOutages, ThermalNoMinRampLimitedOutages},
+}
+    no_min_spec = PSI.AddCostSpec(;
+        variable_type = PSI.ActivePowerVariable,
+        component_type = T,
+        has_status_variable = PSI.has_on_variable(optimization_container, T),
+        has_status_parameter = PSI.has_on_parameter(optimization_container, T),
+        variable_cost = PSY.get_variable,
+        fixed_cost = PSY.get_fixed,
+    )
+    resolution = PSI.model_resolution(optimization_container)
+    dt = Dates.value(Dates.Second(resolution)) / PSI.SECONDS_IN_HOUR
+    for g in devices
+        component_name = PSY.get_name(g)
+        op_cost = PSY.get_operation_cost(g)
+        cost_component = PSY.get_variable(op_cost)
+        if isa(cost_component, PSY.VariableCost{Array{Tuple{Float64, Float64}, 1}})
+            @debug "PWL cost function detected for device $(component_name) using ThermalDispatchNoMin"
+            slopes = PSY.get_slopes(cost_component)
+            if any(slopes .< 0) || !PSI.pwlparamcheck(cost_component)
+                throw(
+                    IS.InvalidValue(
+                        "The PWL cost data provided for generator $(PSY.get_name(g)) is not compatible with a No Min Cost.",
+                    ),
+                )
+            end
+            if slopes[1] != 0.0
+                @debug "PWL has no 0.0 intercept for generator $(PSY.get_name(g))"
+                # adds a first intercept a x = 0.0 and Y below the intercept of the first tuple to make convex equivalent
+                first_pair = PSY.get_cost(cost_component)[1]
+                cost_function_data = deepcopy(cost_component.cost)
+                intercept_point = (0.0, first_pair[2] - PSI.COST_EPSILON)
+                cost_function_data = vcat(intercept_point, cost_function_data)
+                @assert PSI.slope_convexity_check(slopes)
+            else
+                cost_function_data = cost_component.cost
+            end
+            time_steps = PSI.model_time_steps(optimization_container)
+            for t in time_steps
+                gen_cost = PSI.pwl_gencost_linear!(
+                    optimization_container,
+                    no_min_spec,
+                    component_name,
+                    cost_function_data,
+                    t,
+                )
+                PSI.add_to_cost_expression!(
+                    optimization_container,
+                    no_min_spec.multiplier * gen_cost * dt,
+                )
+            end
+        else
+            PSI.add_to_cost!(optimization_container, no_min_spec, op_cost, g)
+        end
+    end
     return
 end

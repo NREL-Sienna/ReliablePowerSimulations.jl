@@ -126,8 +126,7 @@ function device_mixedinteger_rateofchange_outages!(
         con_up[name, 1] = JuMP.@constraint(
             optimization_container.JuMPmodel,
             expression_ub - (ic_power) <=
-            r.ramp_limits.up +
-            r.limits.max * varstart[name, 1]
+            r.ramp_limits.up + r.limits.max * varstart[name, 1]
         )
         expression_lb = JuMP.AffExpr(0.0, variable[name, 1] => 1.0)
         for val in r.additional_terms_lb
@@ -140,8 +139,7 @@ function device_mixedinteger_rateofchange_outages!(
         con_down[name, 1] = JuMP.@constraint(
             optimization_container.JuMPmodel,
             (ic_power) - expression_lb <=
-            r.ramp_limits.down +
-            r.limits.max * varstop[name, 1]
+            r.ramp_limits.down + r.limits.max * varstop[name, 1]
         )
     end
 
@@ -157,8 +155,7 @@ function device_mixedinteger_rateofchange_outages!(
         con_up[name, t] = JuMP.@constraint(
             optimization_container.JuMPmodel,
             expression_ub - variable[name, t - 1] <=
-            r.ramp_limits.up +
-            r.limits.max * varstart[name, t]
+            r.ramp_limits.up + r.limits.max * varstart[name, t]
         )
         expression_lb = JuMP.AffExpr(0.0, variable[name, t] => 1.0)
         for val in r.additional_terms_lb
@@ -171,8 +168,7 @@ function device_mixedinteger_rateofchange_outages!(
         con_down[name, t] = JuMP.@constraint(
             optimization_container.JuMPmodel,
             variable[name, t - 1] - expression_lb <=
-            r.ramp_limits.down +
-            r.limits.max * varstop[name, t]
+            r.ramp_limits.down + r.limits.max * varstop[name, t]
         )
     end
 

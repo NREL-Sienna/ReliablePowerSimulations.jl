@@ -187,19 +187,26 @@ function device_outage_ub!(
     constraint_info::Vector{DeviceOutageConstraintInfo},
     cons_name::Symbol,
     var_name::Symbol,
+    outage_variable::Symbol,
 )
     time_steps = PSI.model_time_steps(optimization_container)
     varp = PSI.get_variable(optimization_container, var_name)
-
+    var_outage = PSI.get_variable(optimization_container, outage_variable)
+    name_outage = PSI.middle_rename(cons_name, PSI.PSI_NAME_DELIMITER, "param")
     set_names = [PSI.get_component_name(ic) for ic in constraint_info]
     constraint =
         PSI.add_cons_container!(optimization_container, cons_name, set_names, time_steps)
-
+    con_outage =
+        PSI.add_cons_container!(optimization_container, name_outage, set_names, time_steps)
     for cont in constraint_info, t in time_steps
         name = PSI.get_component_name(cont)
         constraint[name, t] = JuMP.@constraint(
             optimization_container.JuMPmodel,
             varp[name, t] <= (cont.timeseries[t]) * PSI.M_VALUE
+        )
+        con_outage[name, t] = JuMP.@constraint(
+            optimization_container.JuMPmodel,
+            var_outage[name, t] == cont.timeseries[t]
         )
     end
     return
@@ -210,15 +217,18 @@ function device_outage_ub_parameter!(
     constraint_info::Vector{DeviceOutageConstraintInfo},
     cons_name::Symbol,
     var_name::Symbol,
+    outage_variable::Symbol,
     param_reference::PSI.UpdateRef,
 )
     time_steps = PSI.model_time_steps(optimization_container)
     varp = PSI.get_variable(optimization_container, var_name)
-
+    var_outage = PSI.get_variable(optimization_container, outage_variable)
+    name_outage = PSI.middle_rename(cons_name, PSI.PSI_NAME_DELIMITER, "param")
     set_names = [PSI.get_component_name(ic) for ic in constraint_info]
     constraint =
         PSI.add_cons_container!(optimization_container, cons_name, set_names, time_steps)
-
+    con_outage =
+        PSI.add_cons_container!(optimization_container, name_outage, set_names, time_steps)
     container_outage = PSI.add_param_container!(
         optimization_container,
         param_reference,
@@ -236,6 +246,10 @@ function device_outage_ub_parameter!(
         constraint[name, t] = JuMP.@constraint(
             optimization_container.JuMPmodel,
             varp[name, t] <= param[name, t] * PSI.M_VALUE
+        )
+        con_outage[name, t] = JuMP.@constraint(
+            optimization_container.JuMPmodel,
+            var_outage[name, t] == param[name, t]
         )
     end
     return
