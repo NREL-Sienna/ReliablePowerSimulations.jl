@@ -624,17 +624,12 @@ function PSI.construct_device!(
     return
 end
 
-
 function PSI.construct_device!(
     optimization_container::PSI.OptimizationContainer,
     sys::PSY.System,
     model::PSI.DeviceModel{T, V},
     ::Type{S},
-) where {
-    T <: PSY.ThermalGen,
-    S <: PSI.PM.AbstractPowerModel,
-    V <: ThermalNoMinOutages,
-}
+) where {T <: PSY.ThermalGen, S <: PSI.PM.AbstractPowerModel, V <: ThermalNoMinOutages}
     devices = PSI.get_available_components(T, sys)
 
     if !PSI.validate_available_devices(T, devices)
@@ -694,11 +689,7 @@ function PSI.construct_device!(
     sys::PSY.System,
     model::PSI.DeviceModel{T, V},
     ::Type{S},
-) where {
-    T <: PSY.ThermalGen,
-    S <: PM.AbstractActivePowerModel,
-    V <: ThermalNoMinOutages,
-}
+) where {T <: PSY.ThermalGen, S <: PM.AbstractActivePowerModel, V <: ThermalNoMinOutages}
     devices = PSI.get_available_components(T, sys)
 
     if !PSI.validate_available_devices(T, devices)
@@ -742,7 +733,6 @@ function PSI.construct_device!(
 
     return
 end
-
 
 function PSI.construct_device!(
     optimization_container::PSI.OptimizationContainer,

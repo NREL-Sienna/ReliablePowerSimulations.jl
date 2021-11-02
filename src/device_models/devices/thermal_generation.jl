@@ -60,7 +60,7 @@ function PSI.DeviceRangeConstraintSpec(
             ),
             variable_name = PSI.make_variable_name(PSI.ActivePowerVariable, T),
             limits_func = x -> (min = 0.0, max = PSY.get_active_power_limits(x).max),
-            constraint_func = device_range!,
+            constraint_func = PSI.device_range!,
             constraint_struct = PSI.DeviceRangeConstraintInfo,
         ),
         custom_optimization_container_func = custom_active_power_constraints!,
