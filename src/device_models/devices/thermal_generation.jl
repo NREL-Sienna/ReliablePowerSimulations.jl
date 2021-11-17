@@ -539,7 +539,7 @@ function PSI.cost_function!(
                 cost_function_data = deepcopy(cost_component.cost)
                 intercept_point = (0.0, first_pair[2] - PSI.COST_EPSILON)
                 cost_function_data = vcat(intercept_point, cost_function_data)
-                @assert PSI.slope_convexity_check(slopes)
+                # @assert PSI.slope_convexity_check(slopes)
             else
                 cost_function_data = cost_component.cost
             end

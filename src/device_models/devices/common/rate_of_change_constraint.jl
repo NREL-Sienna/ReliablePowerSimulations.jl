@@ -36,7 +36,7 @@ function device_linear_rateofchange_outages!(
         con_up[name, 1] = JuMP.@constraint(
             optimization_container.JuMPmodel,
             expression_ub - ic_power <=
-            r.ramp_limits.up + (r.limits.min - ic_outage * r.limits.min)
+            r.ramp_limits.up + (r.limits.min - ic_outage * r.limits.min) + r.limits.max
         )
         expression_lb = JuMP.AffExpr(0.0, variable[name, 1] => 1.0)
         for val in r.additional_terms_lb
@@ -49,7 +49,7 @@ function device_linear_rateofchange_outages!(
         con_down[name, 1] = JuMP.@constraint(
             optimization_container.JuMPmodel,
             ic_power - expression_lb <=
-            r.ramp_limits.down + (r.limits.max - outage_parameter[name, 1] * r.limits.max)
+            r.ramp_limits.down + (r.limits.max - outage_parameter[name, 1] * r.limits.max) + r.limits.max
         )
     end
 
