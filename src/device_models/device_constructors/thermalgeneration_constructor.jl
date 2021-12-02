@@ -433,6 +433,13 @@ function PSI.construct_device!(
         S,
         PSI.get_feedforward(model),
     )
+    outage_constraints!(
+        optimization_container,
+        devices,
+        model,
+        S,
+        PSI.get_feedforward(model),
+    )
     feedforward!(optimization_container, devices, model, PSI.get_feedforward(model))
 
     # Cost Function
@@ -482,6 +489,13 @@ function PSI.construct_device!(
         PSI.get_feedforward(model),
     )
     add_outage_parameter!(
+        optimization_container,
+        devices,
+        model,
+        S,
+        PSI.get_feedforward(model),
+    )
+    outage_constraints!(
         optimization_container,
         devices,
         model,
@@ -553,6 +567,13 @@ function PSI.construct_device!(
         S,
         PSI.get_feedforward(model),
     )
+    outage_constraints!(
+        optimization_container,
+        devices,
+        model,
+        S,
+        PSI.get_feedforward(model),
+    )
     ramp_constraints!(optimization_container, devices, model, S, PSI.get_feedforward(model))
     feedforward!(optimization_container, devices, model, PSI.get_feedforward(model))
 
@@ -603,6 +624,13 @@ function PSI.construct_device!(
         PSI.get_feedforward(model),
     )
     add_outage_parameter!(
+        optimization_container,
+        devices,
+        model,
+        S,
+        PSI.get_feedforward(model),
+    )
+    outage_constraints!(
         optimization_container,
         devices,
         model,

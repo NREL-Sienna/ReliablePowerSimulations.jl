@@ -424,6 +424,54 @@ function outage_constraints!(
     return
 end
 
+function outage_constraints!(
+    optimization_container::PSI.OptimizationContainer,
+    devices::IS.FlattenIteratorWrapper{T},
+    model::PSI.DeviceModel{T, D},
+    ::Type{S},
+    feedforward::Union{Nothing, PSI.AbstractAffectFeedForward},
+) where {
+    T <: PSY.ThermalGen,
+    S <: PM.AbstractPowerModel,
+    D <: Union{ThermalDispatchOutages, ThermalRampLimitedOutages},
+}
+    parameters = PSI.model_has_parameters(optimization_container)
+    resolution = PSI.model_resolution(optimization_container)
+    forecast_label = "outage"
+    time_steps = PSI.model_time_steps(optimization_container)
+    var_outage =
+        PSI.get_variable(optimization_container, PSI.make_variable_name(OutageVariable, T))
+    name_outage =
+        PSI.make_constraint_name(OUTAGE, T), set_names = [PSY.get_name(d) for d in devices]
+    con_outage =
+        PSI.add_cons_container!(optimization_container, name_outage, set_names, time_steps)
+    if parameters
+        for device in devices, t in time_steps
+            name = PSY.get_name(device)
+            timeseries = PSI.get_time_series(optimization_container, device, forecast_label)
+            con_outage[name, t] = JuMP.@constraint(
+                optimization_container.JuMPmodel,
+                var_outage[name, t] == timeseries[t]
+            )
+        end
+    else
+        container_outage = PSI.get_parameter_container(
+            optimization_container,
+            PSI.UpdateRef{T}(OUTAGE, forecast_label),
+        )
+        param = PSI.get_parameter_array(container_outage)
+        for device in devices, t in time_steps
+            name = PSY.get_name(device)
+            timeseries = PSI.get_time_series(optimization_container, device, forecast_label)
+            con_outage[name, t] = JuMP.@constraint(
+                optimization_container.JuMPmodel,
+                var_outage[name, t] == param[name, t]
+            )
+        end
+    end
+    return
+end
+
 function add_outage_parameter!(
     optimization_container::PSI.OptimizationContainer,
     devices::IS.FlattenIteratorWrapper{T},
