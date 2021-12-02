@@ -442,7 +442,8 @@ function outage_constraints!(
     var_outage =
         PSI.get_variable(optimization_container, PSI.make_variable_name(OutageVariable, T))
     name_outage =
-        PSI.make_constraint_name(OUTAGE, T), set_names = [PSY.get_name(d) for d in devices]
+        PSI.make_constraint_name(OUTAGE, T)
+    set_names = [PSY.get_name(d) for d in devices]
     con_outage =
         PSI.add_cons_container!(optimization_container, name_outage, set_names, time_steps)
     if parameters
