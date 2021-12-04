@@ -447,15 +447,6 @@ function outage_constraints!(
     con_outage =
         PSI.add_cons_container!(optimization_container, name_outage, set_names, time_steps)
     if parameters
-        for device in devices, t in time_steps
-            name = PSY.get_name(device)
-            timeseries = PSI.get_time_series(optimization_container, device, forecast_label)
-            con_outage[name, t] = JuMP.@constraint(
-                optimization_container.JuMPmodel,
-                var_outage[name, t] == timeseries[t]
-            )
-        end
-    else
         container_outage = PSI.get_parameter_container(
             optimization_container,
             PSI.UpdateRef{T}(OUTAGE, forecast_label),
@@ -463,10 +454,18 @@ function outage_constraints!(
         param = PSI.get_parameter_array(container_outage)
         for device in devices, t in time_steps
             name = PSY.get_name(device)
-            timeseries = PSI.get_time_series(optimization_container, device, forecast_label)
             con_outage[name, t] = JuMP.@constraint(
                 optimization_container.JuMPmodel,
                 var_outage[name, t] == param[name, t]
+            )
+        end
+    else
+        for device in devices, t in time_steps
+            name = PSY.get_name(device)
+            timeseries = PSI.get_time_series(optimization_container, device, forecast_label)
+            con_outage[name, t] = JuMP.@constraint(
+                optimization_container.JuMPmodel,
+                var_outage[name, t] == timeseries[t]
             )
         end
     end
