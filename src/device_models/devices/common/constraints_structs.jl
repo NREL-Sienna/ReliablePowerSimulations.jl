@@ -1,4 +1,4 @@
-struct DeviceDurationConstraintInfo <: PSI.AbstractStartConstraintInfo
+struct DeviceDurationConstraintInfo
     component_name::String
     duration_data::PSI.UpDown
     initial_duration::Tuple{PSI.InitialCondition, PSI.InitialCondition}
@@ -14,7 +14,7 @@ get_initial_outage(d::DeviceDurationConstraintInfo) = d.initial_outage
 get_multiplier(d::DeviceDurationConstraintInfo) = d.multiplier
 get_timeseries(d::DeviceDurationConstraintInfo) = d.timeseries
 
-struct DeviceOutageConstraintInfo <: PSI.AbstractStartConstraintInfo
+struct DeviceOutageConstraintInfo
     component_name::String
     initial_condition::Union{Nothing, PSI.InitialCondition}
     multiplier::Float64
@@ -26,7 +26,7 @@ get_initial_condition(d::DeviceOutageConstraintInfo) = d.initial_condition
 get_multiplier(d::DeviceOutageConstraintInfo) = d.multiplier
 get_timeseries(d::DeviceOutageConstraintInfo) = d.timeseries
 
-struct DeviceOutageRampConstraintInfo <: PSI.AbstractRampConstraintInfo
+struct DeviceOutageRampConstraintInfo
     component_name::String
     limits::PSI.MinMax
     ic_power::PSI.InitialCondition
@@ -68,6 +68,7 @@ function DeviceOutageRampConstraintInfo(
     )
 end
 
+get_component_name(d::DeviceOutageRampConstraintInfo) = d.component_name
 get_limits(d::DeviceOutageRampConstraintInfo) = d.limits
 get_ic_power(d::DeviceOutageRampConstraintInfo) = d.ic_power
 get_ic_outage(d::DeviceOutageRampConstraintInfo) = d.ic_outage

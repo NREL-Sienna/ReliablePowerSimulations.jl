@@ -1,32 +1,26 @@
-# TODO: docstrings
-@doc raw"""
-
-"""
 function device_duration_look_ahead_outage!(
-    optimization_container::PSI.OptimizationContainer,
+    container::PSI.OptimizationContainer,
+    T::Type{OutageTimeConstraint},
     constraint_info::Vector{DeviceDurationConstraintInfo},
-    cons_name::Symbol,
-    var_names::Tuple{Symbol, Symbol, Symbol},
-)
-    time_steps = PSI.model_time_steps(optimization_container)
-    varon = PSI.get_variable(optimization_container, var_names[1])
-    varstart = PSI.get_variable(optimization_container, var_names[2])
-    varstop = PSI.get_variable(optimization_container, var_names[3])
-
-    name_up = PSI.middle_rename(cons_name, PSI.PSI_NAME_DELIMITER, "up")
-    name_down = PSI.middle_rename(cons_name, PSI.PSI_NAME_DELIMITER, "dn")
-
-    set_names = [PSI.get_component_name(ic) for ic in constraint_info]
-    con_up = PSI.add_cons_container!(optimization_container, name_up, set_names, time_steps)
+    devices::IS.FlattenIteratorWrapper{V},
+) where {V <: PSY.ThermalGen}
+    time_steps = PSI.get_time_steps(container)
+    device_names = [PSY.get_name(d) for d in devices]
+    varon = PSI.get_variable(container, PSI.OnVariable(), V)
+    varstop = PSI.get_variable(container, PSI.StopVariable(), V)
+    varstart = PSI.get_variable(container, PSI.StartVariable(), V)
+    
+    con_up =
+        PSI.add_constraints_container!(container, T(), V, device_names, time_steps, meta="up")
     con_down =
-        PSI.add_cons_container!(optimization_container, name_down, set_names, time_steps)
+        PSI.add_constraints_container!(container, T(), V, device_names, time_steps, meta="dn")
 
     for t in time_steps
         for cont in constraint_info
-            name = PSI.get_component_name(cont)
+            name = cont.name
             # Minimum Up-time Constraint
             expr_up =
-                JuMP.GenericAffExpr{Float64, PSI._variable_type(optimization_container)}(0)
+                JuMP.GenericAffExpr{Float64, JuMP.VariableRef}(0)
             for i in (t - cont.duration_data.up + 1):t
                 if i in time_steps
                     i = Int64(i)
@@ -37,14 +31,14 @@ function device_duration_look_ahead_outage!(
                 expr_up += first(cont.initial_duration).value
             end
             con_up[name, t] = JuMP.@constraint(
-                optimization_container.JuMPmodel,
+                container.JuMPmodel,
                 varstop[name, t] * cont.duration_data.up <=
                 expr_up + (1 - cont.timeseries[t]) * cont.duration_data.up
             )
 
             # Minimum Down-time Constraint
             expr_dn =
-                JuMP.GenericAffExpr{Float64, PSI._variable_type(optimization_container)}(0)
+                JuMP.GenericAffExpr{Float64, JuMP.VariableRef}(0)
             for i in (t - cont.duration_data.down + 1):t
                 if i in time_steps
                     i = Int64(i)
@@ -60,7 +54,7 @@ function device_duration_look_ahead_outage!(
                 expr_dn += (1 - cont.timeseries[t - 1]) * cont.duration_data.down
             end
             con_down[name, t] = JuMP.@constraint(
-                optimization_container.JuMPmodel,
+                container.JuMPmodel,
                 varstart[name, t] * cont.duration_data.down <=
                 expr_dn + (1 - cont.timeseries[t]) * cont.duration_data.down
             )
@@ -69,41 +63,33 @@ function device_duration_look_ahead_outage!(
     return
 end
 
-# TODO: docstrings
-@doc raw"""
 
-"""
 function device_duration_parameters_outage!(
-    optimization_container::PSI.OptimizationContainer,
+    container::PSI.OptimizationContainer,
+    T::Type{OutageTimeConstraint},
     constraint_info::Vector{DeviceDurationConstraintInfo},
-    cons_name::Symbol,
-    var_names::Tuple{Symbol, Symbol, Symbol},
-    param_reference::PSI.UpdateRef,
-)
-    time_steps = PSI.model_time_steps(optimization_container)
-    varon = PSI.get_variable(optimization_container, var_names[1])
-    varstart = PSI.get_variable(optimization_container, var_names[2])
-    varstop = PSI.get_variable(optimization_container, var_names[3])
+    devices::IS.FlattenIteratorWrapper{V},
+) where {V <: PSY.ThermalGen}
+    time_steps = PSI.get_time_steps(container)
+    device_names = [PSY.get_name(d) for d in devices]
+    varon = PSI.get_variable(container, PSI.OnVariable(), V)
+    varstop = PSI.get_variable(container, PSI.StopVariable(), V)
+    varstart = PSI.get_variable(container, PSI.StartVariable(), V)
 
-    name_up = PSI.middle_rename(cons_name, PSI.PSI_NAME_DELIMITER, "up")
-    name_down = PSI.middle_rename(cons_name, PSI.PSI_NAME_DELIMITER, "dn")
-
-    set_names = [PSI.get_component_name(ic) for ic in constraint_info]
-    con_up = PSI.add_cons_container!(optimization_container, name_up, set_names, time_steps)
+    con_up =
+        PSI.add_constraints_container!(container, T(), V, device_names, time_steps, meta="up")
     con_down =
-        PSI.add_cons_container!(optimization_container, name_down, set_names, time_steps)
-
-    container_outage = PSI.get_parameter_container(optimization_container, param_reference)
-    param = PSI.get_parameter_array(container_outage)
-    multiplier = PSI.get_multiplier_array(container_outage)
+        PSI.add_constraints_container!(container, T(), V, device_names, time_steps, meta="dn")
+    param = PSI.get_parameter_array(container, OutageTimeSeriesParameter(), V)
+    multiplier = PSI.get_parameter_multiplier_array(container, OutageTimeSeriesParameter(), V)
 
     for t in time_steps
         for cont in constraint_info
-            name = PSI.get_component_name(cont)
+            name = get_component_name(cont)
 
             # Minimum Up-time Constraint
             expr_up =
-                JuMP.GenericAffExpr{Float64, PSI._variable_type(optimization_container)}(0)
+                JuMP.GenericAffExpr{Float64, JuMP.VariableRef}(0)
             for i in (t - cont.duration_data.up + 1):t
                 if i in time_steps
                     i = Int64(i)
@@ -115,15 +101,15 @@ function device_duration_parameters_outage!(
             end
 
             con_up[name, t] = JuMP.@constraint(
-                optimization_container.JuMPmodel,
+                container.JuMPmodel,
                 varstop[name, t] * cont.duration_data.up <=
                 expr_up +
-                (1 * cont.duration_data.up - param[name, t] * cont.duration_data.up)
+                (1 * cont.duration_data.up - param[name, t] * multiplier[name, t] * cont.duration_data.up)
             )
 
             # Minimum Down-time Constraint
             expr_dn =
-                JuMP.GenericAffExpr{Float64, PSI._variable_type(optimization_container)}(0)
+                JuMP.GenericAffExpr{Float64, JuMP.VariableRef}(0)
             for i in (t - cont.duration_data.down + 1):t
                 if i in time_steps
                     i = Int64(i)
@@ -141,10 +127,10 @@ function device_duration_parameters_outage!(
                 )
             else
                 expr_dn +=
-                    (cont.duration_data.down - param[name, t - 1] * cont.duration_data.down)
+                    (cont.duration_data.down - param[name, t - 1] * multiplier[name, t - 1] * cont.duration_data.down)
             end
             con_down[name, t] = JuMP.@constraint(
-                optimization_container.JuMPmodel,
+                container.JuMPmodel,
                 varstart[name, t] * cont.duration_data.down <= expr_dn
             )
         end

@@ -1,27 +1,28 @@
 function device_linear_rateofchange_outages!(
-    optimization_container::PSI.OptimizationContainer,
+    container::PSI.OptimizationContainer,
+    T::Type{OutageRampConstraint},
     rate_data::Vector{DeviceOutageRampConstraintInfo},
-    cons_name::Symbol,
-    var_name::Symbol,
-    update_ref::PSI.UpdateRef,
-)
-    parameters = PSI.model_has_parameters(optimization_container)
-    time_steps = PSI.model_time_steps(optimization_container)
-    up_name = PSI.middle_rename(cons_name, PSI.PSI_NAME_DELIMITER, "up")
-    down_name = PSI.middle_rename(cons_name, PSI.PSI_NAME_DELIMITER, "dn")
+    devices::IS.FlattenIteratorWrapper{V},
+    model::PSI.DeviceModel{V, W},
+) where {V <: PSY.ThermalGen, W <: PSI.AbstractThermalDispatchFormulation}
+    parameters = PSI.built_for_recurrent_solves(container)
+    time_steps = PSI.get_time_steps(container)
+    variable = PSI.get_variable(container, PSI.ActivePowerVariable(), V)
 
-    variable = PSI.get_variable(optimization_container, var_name)
+    ramp_devices = PSI._get_ramp_constraint_devices(container, devices)
+    minutes_per_period = PSI._get_minutes_per_period(container)
+    # IC = PSI._get_initial_condition_type(T, V, W)
+    # initial_conditions_power = PSI.get_initial_condition(container, IC(), V)
 
-    set_name = [PSI.get_component_name(r) for r in rate_data]
-    con_up = PSI.add_cons_container!(optimization_container, up_name, set_name, time_steps)
+    set_name = [PSY.get_name(r) for r in ramp_devices]
+    con_up = PSI.add_constraints_container!(container, T(), V, set_name, time_steps, meta="up")
     con_down =
-        PSI.add_cons_container!(optimization_container, down_name, set_name, time_steps)
-    container_outage = PSI.get_parameter_container(optimization_container, update_ref)
-    outage_parameter = PSI.get_parameter_array(container_outage)
-    multiplier = PSI.get_multiplier_array(container_outage)
+        PSI.add_constraints_container!(container, T(), V, set_name, time_steps, meta="dn")
+    outage_parameter = PSI.get_parameter_array(container, OutageTimeSeriesParameter(), V)
+    multiplier = PSI.get_parameter_multiplier_array(container, OutageTimeSeriesParameter(), V)
 
     for r in rate_data
-        name = PSI.get_component_name(r)
+        name = get_component_name(r)
         ic_power = PSI.get_value(get_ic_power(r))
         ic_outage = PSI.get_value(get_ic_outage(r))
         @debug "add rate_of_change_constraint" name ic_power
@@ -30,11 +31,11 @@ function device_linear_rateofchange_outages!(
         for val in r.additional_terms_ub
             JuMP.add_to_expression!(
                 expression_ub,
-                PSI.get_variable(optimization_container, val)[name, 1],
+                PSI.get_variable(container, val)[name, 1],
             )
         end
         con_up[name, 1] = JuMP.@constraint(
-            optimization_container.JuMPmodel,
+            container.JuMPmodel,
             expression_ub - ic_power <=
             r.ramp_limits.up + (r.limits.min - ic_outage * r.limits.min) + r.limits.max
         )
@@ -42,12 +43,12 @@ function device_linear_rateofchange_outages!(
         for val in r.additional_terms_lb
             JuMP.add_to_expression!(
                 expression_lb,
-                PSI.get_variable(optimization_container, val)[name, 1],
+                PSI.get_variable(container, val)[name, 1],
                 -1.0,
             )
         end
         con_down[name, 1] = JuMP.@constraint(
-            optimization_container.JuMPmodel,
+            container.JuMPmodel,
             ic_power - expression_lb <=
             r.ramp_limits.down +
             (r.limits.max - outage_parameter[name, 1] * r.limits.max) +
@@ -56,16 +57,16 @@ function device_linear_rateofchange_outages!(
     end
 
     for t in time_steps[2:end], r in rate_data
-        name = PSI.get_component_name(r)
+        name = get_component_name(r)
         expression_ub = JuMP.AffExpr(0.0, variable[name, t] => 1.0)
         for val in r.additional_terms_ub
             JuMP.add_to_expression!(
                 expression_ub,
-                PSI.get_variable(optimization_container, val)[name, t],
+                PSI.get_variable(container, val)[name, t],
             )
         end
         con_up[name, t] = JuMP.@constraint(
-            optimization_container.JuMPmodel,
+            container.JuMPmodel,
             expression_ub - variable[name, t - 1] <=
             r.ramp_limits.up +
             (r.limits.min - outage_parameter[name, t - 1] * r.limits.min)
@@ -74,12 +75,12 @@ function device_linear_rateofchange_outages!(
         for val in r.additional_terms_lb
             JuMP.add_to_expression!(
                 expression_lb,
-                PSI.get_variable(optimization_container, val)[name, t],
+                PSI.get_variable(container, val)[name, t],
                 -1.0,
             )
         end
         con_down[name, t] = JuMP.@constraint(
-            optimization_container.JuMPmodel,
+            container.JuMPmodel,
             variable[name, t - 1] - expression_lb <=
             r.ramp_limits.down + (r.limits.max - outage_parameter[name, t] * r.limits.max)
         )
@@ -89,44 +90,45 @@ function device_linear_rateofchange_outages!(
 end
 
 function device_mixedinteger_rateofchange_outages!(
-    optimization_container::PSI.OptimizationContainer,
+    container::PSI.OptimizationContainer,
+    T::Type{OutageRampConstraint},
     rate_data::Vector{DeviceOutageRampConstraintInfo},
-    cons_name::Symbol,
-    var_names::Tuple{Symbol, Symbol, Symbol},
-    update_ref::PSI.UpdateRef,
-)
-    parameters = PSI.model_has_parameters(optimization_container)
-    time_steps = PSI.model_time_steps(optimization_container)
-    up_name = PSI.middle_rename(cons_name, PSI.PSI_NAME_DELIMITER, "up")
-    down_name = PSI.middle_rename(cons_name, PSI.PSI_NAME_DELIMITER, "dn")
+    devices::IS.FlattenIteratorWrapper{V},
+    model::PSI.DeviceModel{V, W},
+) where {V <: PSY.ThermalGen, W <: Union{ThermalStandardUCOutages, ThermalBasicUCOutages}}
+    parameters = PSI.built_for_recurrent_solves(container)
+    time_steps = PSI.get_time_steps(container)
+    variable = PSI.get_variable(container, PSI.ActivePowerVariable(), V)
+    varstart = PSI.get_variable(container, PSI.StartVariable(), V)
+    varstop = PSI.get_variable(container, PSI.StopVariable(), V)
 
-    variable = PSI.get_variable(optimization_container, var_names[1])
-    varstart = PSI.get_variable(optimization_container, var_names[2])
-    varstop = PSI.get_variable(optimization_container, var_names[3])
+    ramp_devices = PSI._get_ramp_constraint_devices(container, devices)
+    minutes_per_period = PSI._get_minutes_per_period(container)
+    # IC = PSI._get_initial_condition_type(T, V, W)
+    # initial_conditions_power = PSI.get_initial_condition(container, IC(), V)
 
-    set_name = [PSI.get_component_name(r) for r in rate_data]
-    con_up = PSI.add_cons_container!(optimization_container, up_name, set_name, time_steps)
+    set_name = [PSY.get_name(r) for r in ramp_devices]
+    con_up = PSI.add_constraints_container!(container, T(), V, set_name, time_steps, meta="up")
     con_down =
-        PSI.add_cons_container!(optimization_container, down_name, set_name, time_steps)
-    container_outage = PSI.get_parameter_container(optimization_container, update_ref)
-    outage_parameter = PSI.get_parameter_array(container_outage)
-    multiplier = PSI.get_multiplier_array(container_outage)
+        PSI.add_constraints_container!(container, T(), V, set_name, time_steps, meta="dn")
+    outage_parameter = PSI.get_parameter_array(container, OutageTimeSeriesParameter(), V)
+    multiplier = PSI.get_parameter_multiplier_array(container, OutageTimeSeriesParameter(), V)
 
     for r in rate_data
-        name = PSI.get_component_name(r)
-        ic_power = PSI.get_value(get_ic_power(r))
-        ic_outage = PSI.get_value(get_ic_outage(r))
+        name = r.component_name
+        ic_power = PSI.get_value(r.ic_power)
+        ic_outage = PSI.get_value(r.ic_outage)
         @debug "add rate_of_change_constraint" name ic_power
         @assert (parameters && isa(ic_power, PJ.ParameterRef)) || !parameters
         expression_ub = JuMP.AffExpr(0.0, variable[name, 1] => 1.0)
         for val in r.additional_terms_ub
             JuMP.add_to_expression!(
                 expression_ub,
-                PSI.get_variable(optimization_container, val)[name, 1],
+                PSI.get_variable(container, val)[name, 1],
             )
         end
         con_up[name, 1] = JuMP.@constraint(
-            optimization_container.JuMPmodel,
+            container.JuMPmodel,
             expression_ub - (ic_power) <=
             r.ramp_limits.up + r.limits.max * varstart[name, 1]
         )
@@ -134,28 +136,28 @@ function device_mixedinteger_rateofchange_outages!(
         for val in r.additional_terms_lb
             JuMP.add_to_expression!(
                 expression_lb,
-                PSI.get_variable(optimization_container, val)[name, 1],
+                PSI.get_variable(container, val)[name, 1],
                 -1.0,
             )
         end
         con_down[name, 1] = JuMP.@constraint(
-            optimization_container.JuMPmodel,
+            container.JuMPmodel,
             (ic_power) - expression_lb <=
             r.ramp_limits.down + r.limits.max * varstop[name, 1]
         )
     end
 
     for t in time_steps[2:end], r in rate_data
-        name = PSI.get_component_name(r)
+        name = get_component_name(r)
         expression_ub = JuMP.AffExpr(0.0, variable[name, t] => 1.0)
         for val in r.additional_terms_ub
             JuMP.add_to_expression!(
                 expression_ub,
-                PSI.get_variable(optimization_container, val)[name, t],
+                PSI.get_variable(container, val)[name, t],
             )
         end
         con_up[name, t] = JuMP.@constraint(
-            optimization_container.JuMPmodel,
+            container.JuMPmodel,
             expression_ub - variable[name, t - 1] <=
             r.ramp_limits.up + r.limits.max * varstart[name, t]
         )
@@ -163,12 +165,12 @@ function device_mixedinteger_rateofchange_outages!(
         for val in r.additional_terms_lb
             JuMP.add_to_expression!(
                 expression_lb,
-                PSI.get_variable(optimization_container, val)[name, t],
+                PSI.get_variable(container, val)[name, t],
                 -1.0,
             )
         end
         con_down[name, t] = JuMP.@constraint(
-            optimization_container.JuMPmodel,
+            container.JuMPmodel,
             variable[name, t - 1] - expression_lb <=
             r.ramp_limits.down + r.limits.max * varstop[name, t]
         )
