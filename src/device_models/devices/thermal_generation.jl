@@ -20,55 +20,49 @@ PSI.initial_condition_default(::InitialOutageStatus, d::PSY.ThermalGen, ::PSI.Ab
 PSI.initial_condition_variable(::InitialOutageStatus, d::PSY.ThermalGen, ::PSI.AbstractThermalFormulation) = PSI.OnVariable()
 
 
-function _get_data_for_tdc_outages(
-    container::PSI.OptimizationContainer,
-    ::Type{T},
-) where {T <: PSY.ThermalGen}
-    resolution = PSI.get_resolution(container)
+function _get_data_for_tdc(
+    initial_conditions_on::Vector{T},
+    initial_conditions_off::Vector{U},
+    initial_conditions_outage::Vector{U},
+    resolution::Dates.TimePeriod,
+) where {T <: InitialCondition, U <: InitialCondition}
     steps_per_hour = 60 / Dates.value(Dates.Minute(resolution))
     fraction_of_hour = 1 / steps_per_hour
-    initial_conditions_on = PSI.get_initial_condition(container, PSI.InitialTimeDurationOn(), T)
-    initial_conditions_off = PSI.get_initial_condition(container, PSI.InitialTimeDurationOff(), T)
-    initial_conditions_outage = PSI.get_initial_condition(container, InitialOutageStatus(), T)
-
     lenght_devices_on = length(initial_conditions_on)
     lenght_devices_off = length(initial_conditions_off)
     lenght_devices_outage = length(initial_conditions_outage)
-    @assert lenght_devices_off == lenght_devices_on == lenght_devices_outage
-    data = Vector{DeviceDurationConstraintInfo}(undef, lenght_devices_on)
+    
+    IS.@assert_op lenght_devices_off == lenght_devices_on
+    IS.@assert_op lenght_devices_off == lenght_devices_outage
+    time_params = Vector{UpDown}(undef, lenght_devices_on)
+    ini_conds = Matrix{InitialCondition}(undef, lenght_devices_on, 3)
     idx = 0
     for (ix, ic) in enumerate(initial_conditions_on)
-        g = ic.component
-        @assert g == initial_conditions_off[ix].component
-        @assert g == initial_conditions_outage[ix].component
-
+        g = get_component(ic)
+        IS.@assert_op g == get_component(initial_conditions_off[ix])
         time_limits = PSY.get_time_limits(g)
         name = PSY.get_name(g)
-        if !(time_limits === nothing)
-            if (time_limits.up <= fraction_of_hour) & (time_limits.down <= fraction_of_hour)
+        if time_limits !== nothing
+            if (time_limits.up <= fraction_of_hour) && (time_limits.down <= fraction_of_hour)
                 @debug "Generator $(name) has a nonbinding time limits. Constraints Skipped"
                 continue
             else
                 idx += 1
             end
+            ini_conds[idx, 1] = ic
+            ini_conds[idx, 2] = initial_conditions_off[ix]
+            ini_conds[idx, 3] = initial_conditions_outage[ix]
             up_val = round(time_limits.up * steps_per_hour, RoundUp)
             down_val = round(time_limits.down * steps_per_hour, RoundUp)
-            data[idx] = DeviceDurationConstraintInfo(
-                name,
-                (up = up_val, down = down_val),
-                (ic, initial_conditions_off[ix]),
-                initial_conditions_outage[ix],
-                1.0,
-                PSI.get_time_series(container, g, "outage"),
-            )
+            time_params[idx] = time_params[idx] = (up=up_val, down=down_val)
         end
     end
     if idx < lenght_devices_on
-        deleteat!(data, (idx + 1):lenght_devices_on)
+        ini_conds = ini_conds[1:idx, :]
+        deleteat!(time_params, (idx + 1):lenght_devices_on)
     end
-    return data
+    return ini_conds, time_params
 end
-
 
 function PSI.add_constraints!(
     container::PSI.OptimizationContainer,
@@ -78,22 +72,35 @@ function PSI.add_constraints!(
     ::Type{<:PM.AbstractPowerModel},
 ) where {U <: PSY.ThermalGen, V <: Union{ThermalStandardUCOutages, ThermalBasicUCOutages}}
     # Use getter functions that don't require creating the keys here
+    time_steps = PSI.get_time_steps(container)
+    device_names = [PSY.get_name(d) for d in devices]
+    
+    # Use getter functions that don't require creating the keys here
+    initial_conditions_on = PSI.get_initial_condition(container, PSI.InitialTimeDurationOn(), U)
+    initial_conditions_off = PSI.get_initial_condition(container, PSI.InitialTimeDurationOff(), U)
+    initial_conditions_outage = PSI.get_initial_condition(container, PSI.InitialOutageStatus(), U)
+    ini_conds, time_params =
+        _get_data_for_tdc(initial_conditions_on, initial_conditions_off, initial_conditions_outage, resolution)
+
     parameters = PSI.built_for_recurrent_solves(container)
-    constraint_infos = _get_data_for_tdc_outages(container, U)    
-    if parameters
-        device_duration_parameters_outage!(
-            container,
-            OutageTimeConstraint,
-            constraint_infos,
-            devices,
-        )
-    else
-        device_duration_look_ahead_outage!(
-            container,
-            OutageTimeConstraint(),
-            constraint_infos,
-            devices,
-        )
+    if !(isempty(ini_conds))
+        if parameters
+            device_duration_parameters_outage!(
+                container,
+                time_params,
+                ini_conds,
+                OutageTimeConstraint(),
+                U,
+            )
+        else
+            device_duration_look_ahead_outage!(
+                container,
+                time_params,
+                ini_conds,
+                OutageTimeConstraint(),
+                U,
+            )
+        end
     end
     return
 end
@@ -158,53 +165,34 @@ function PSI.add_constraints!(
     ::Type{OutageRampConstraint},
     devices::IS.FlattenIteratorWrapper{U},
     model::PSI.DeviceModel{U, V},
-    ::Type{<:PM.AbstractPowerModel},
+    W::Type{<:PM.AbstractPowerModel},
 ) where {U <: PSY.ThermalGen, V <: Union{ThermalStandardUCOutages, ThermalBasicUCOutages}}
-    data = _get_data_for_rocc_outage(container, U)
-    if !isempty(data)
-        # Here goes the reactive power ramp limits when versions for AC and DC are added
-        # ?NG is this still needed
-        # for r in data
-        #     PSI.add_device_services!(r, r.ic_power.device, model)
-        # end
-        device_mixedinteger_rateofchange_outages!(
-            container,
-            OutageRampConstraint,
-            data,
-            devices,
-            model
-        )
-    else
-        @warn "Data doesn't contain generators with ramp limits, consider adjusting your formulation"
-    end
+    PSI.add_semicontinuous_ramp_constraints!(
+        container,
+        OutageRampConstraint,
+        ActivePowerVariable,
+        devices,
+        model,
+        W,
+    )
     return
 end
 
-
 function PSI.add_constraints!(
     container::PSI.OptimizationContainer,
-    ::Type{OutageRampConstraint},
+    T::Type{OutageRampConstraint},
     devices::IS.FlattenIteratorWrapper{U},
     model::PSI.DeviceModel{U, V},
-    ::Type{<:PM.AbstractPowerModel},
+    W::Type{<:PM.AbstractPowerModel},
 ) where {U <: PSY.ThermalGen, V <: PSI.AbstractThermalDispatchFormulation}
-    data = _get_data_for_rocc_outage(container, U)
-    if !isempty(data)
-        # Here goes the reactive power ramp limits when versions for AC and DC are added
-        # ?NG is this still needed
-        # for r in data
-        #     PSI.add_device_services!(r, r.ic_power.device, model)
-        # end
-        device_linear_rateofchange_outages!(
-            container,
-            OutageRampConstraint,
-            data,
-            devices,
-            model
-        )
-    else
-        @warn "Data doesn't contain generators with ramp limits, consider adjusting your formulation"
-    end
+    device_linear_rateofchange_outages!(
+        container,
+        T,
+        ActivePowerVariable,
+        devices,
+        model,
+        W
+    )
     return
 end
 
@@ -229,35 +217,13 @@ function PSI.add_constraints!(
     model::PSI.DeviceModel{V, W},
     X::Type{<:PM.AbstractPowerModel},
 ) where {V <: PSY.ThermalGen, W <: Union{ThermalStandardUCOutages, ThermalBasicUCOutages}}
-
-    parameters = PSI.built_for_recurrent_solves(container)
-    resolution = PSI.get_resolution(container)
-    initial_conditions =
-        PSI.get_initial_condition(container, InitialOutageStatus(), V)
-    forecast_label = "outage"
-    constraint_infos = Vector{DeviceOutageConstraintInfo}()
-    for ic in initial_conditions
-        device = ic.component
-        name = PSI.get_name(device)
-        info = DeviceOutageConstraintInfo(
-            name,
-            ic,
-            1.0,
-            PSI.get_time_series(container, device, forecast_label),
-        )
-        push!(constraint_infos, info)
-    end
-
-    if !(isempty(devices))
-        device_outage_parameter!(
-            container,
-            constraint_infos,
-            T, 
-            devices,
-        )
-    else
-        @warn "Data doesn't contain generators of type $T, consider adjusting your formulation"
-    end
+    device_outage_parameter!(
+        container,
+        T,
+        devices,
+        model,
+        X,
+    )
 
     return
 end
@@ -269,37 +235,14 @@ function PSI.add_constraints!(
     model::PSI.DeviceModel{V, W},
     X::Type{<:PM.AbstractPowerModel},
 ) where {V <: PSY.ThermalGen, W <: AbstractThermalOutageDispatchFormulation}
-
-    parameters = PSI.built_for_recurrent_solves(container)
-    resolution = PSI.get_resolution(container)
-    initial_conditions =
-        PSI.get_initial_condition(container, InitialOutageStatus(), V)
-    forecast_label = "outage"
-    constraint_infos = Vector{DeviceOutageConstraintInfo}()
-    for ic in initial_conditions
-        device = ic.component
-        name = PSI.get_name(device)
-        info = DeviceOutageConstraintInfo(
-            name,
-            ic,
-            1.0,
-            PSI.get_time_series(container, device, forecast_label),
-        )
-        push!(constraint_infos, info)
-    end
-
-    if !(isempty(devices))
-        device_outage_ub_parameter!(
-            container,
-            constraint_infos,
-            T, 
-            devices, 
-            PSI.ActivePowerVariable()
-        )
-    else
-        @warn "Data doesn't contain generators of type $T, consider adjusting your formulation"
-    end
-
+    device_outage_ub_parameter!(
+        container,
+        T,
+        PSI.ActivePowerVariable(),
+        devices, 
+        model,
+        X,
+    )
     return
 end
 
