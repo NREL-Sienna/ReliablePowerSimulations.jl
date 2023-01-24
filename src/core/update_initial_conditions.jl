@@ -8,7 +8,7 @@ function PSI._get_initial_conditions_value(
     T <: PSI.InitialCondition{InitialOutageStatus, Float64},
     V <: PSI.AbstractDeviceFormulation,
     W <: PSY.Component,
-    U <: InitialOutageStatus
+    U <: InitialOutageStatus,
 }
     ic_data = PSI.get_initial_conditions_data(container)
     val = PSI.initial_condition_default(U(), component, V())
@@ -16,7 +16,6 @@ function PSI._get_initial_conditions_value(
         PSI.LOG_GROUP_BUILD_INITIAL_CONDITIONS
     return T(component, val)
 end
-
 
 function PSI._get_initial_conditions_value(
     ::Vector{T},
@@ -28,7 +27,7 @@ function PSI._get_initial_conditions_value(
     T <: PSI.InitialCondition{InitialOutageStatus, PJ.ParameterRef},
     V <: PSI.AbstractDeviceFormulation,
     W <: PSY.Component,
-    U <: InitialOutageStatus
+    U <: InitialOutageStatus,
 }
     ic_data = PSI.get_initial_conditions_data(container)
     val = PSI.initial_condition_default(U(), component, V())

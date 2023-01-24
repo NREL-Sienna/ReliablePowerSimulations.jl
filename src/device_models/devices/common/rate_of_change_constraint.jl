@@ -7,8 +7,8 @@ function device_linear_rateofchange_outages!(
     X::Type{<:PM.AbstractPowerModel},
 ) where {
     S <: Union{PowerAboveMinimumVariable, ActivePowerVariable},
-    V <: PSY.ThermalGen, 
-    W <: PSI.AbstractThermalDispatchFormulation
+    V <: PSY.ThermalGen,
+    W <: PSI.AbstractThermalDispatchFormulation,
 }
     parameters = PSI.built_for_recurrent_solves(container)
     time_steps = PSI.get_time_steps(container)
@@ -23,11 +23,13 @@ function device_linear_rateofchange_outages!(
     expr_up = PSI.get_expression(container, PSI.ActivePowerRangeExpressionUB(), V)
 
     set_name = [PSY.get_name(r) for r in ramp_devices]
-    con_up = PSI.add_constraints_container!(container, T(), V, set_name, time_steps, meta="up")
+    con_up =
+        PSI.add_constraints_container!(container, T(), V, set_name, time_steps, meta = "up")
     con_down =
-        PSI.add_constraints_container!(container, T(), V, set_name, time_steps, meta="dn")
+        PSI.add_constraints_container!(container, T(), V, set_name, time_steps, meta = "dn")
     outage_parameter = PSI.get_parameter_array(container, OutageTimeSeriesParameter(), V)
-    multiplier = PSI.get_parameter_multiplier_array(container, OutageTimeSeriesParameter(), V)
+    multiplier =
+        PSI.get_parameter_multiplier_array(container, OutageTimeSeriesParameter(), V)
 
     for ic in initial_conditions_power
         name = get_component_name(ic)
@@ -41,25 +43,31 @@ function device_linear_rateofchange_outages!(
 
         con_up[name, 1] = JuMP.@constraint(
             container.JuMPmodel,
-            expr_up[name, 1] - ic_power <= ramp_limits.up * minutes_per_period 
-            + (limits.min - outage_parameter[name, 1] * limits.min) + limits.max
+            expr_up[name, 1] - ic_power <=
+            ramp_limits.up * minutes_per_period +
+            (limits.min - outage_parameter[name, 1] * limits.min) +
+            limits.max
         )
         con_down[name, 1] = JuMP.@constraint(
             container.JuMPmodel,
-            ic_power - expr_dn[name, 1] >= ramp_limits.down * minutes_per_period 
-            + (limits.max - outage_parameter[name, 1] * limits.max) + limits.max
+            ic_power - expr_dn[name, 1] >=
+            ramp_limits.down * minutes_per_period +
+            (limits.max - outage_parameter[name, 1] * limits.max) +
+            limits.max
         )
 
         for t in time_steps[2:end]
             con_up[name, t] = JuMP.@constraint(
                 container.JuMPmodel,
-                expr_up[name, t] - ic_power <= ramp_limits.up * minutes_per_period 
-                + (limits.min - outage_parameter[name, t] * limits.min)
+                expr_up[name, t] - ic_power <=
+                ramp_limits.up * minutes_per_period +
+                (limits.min - outage_parameter[name, t] * limits.min)
             )
             con_down[name, 1] = JuMP.@constraint(
                 container.JuMPmodel,
-                ic_power - expr_dn[name, 1] >= ramp_limits.down * minutes_per_period 
-                + (limits.max - outage_parameter[name, t] * limits.max)
+                ic_power - expr_dn[name, 1] >=
+                ramp_limits.down * minutes_per_period +
+                (limits.max - outage_parameter[name, t] * limits.max)
             )
         end
     end

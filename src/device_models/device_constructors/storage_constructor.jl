@@ -4,11 +4,7 @@ function PSI.construct_device!(
     ::PSI.ArgumentConstructStage,
     model::PSI.DeviceModel{St, D},
     ::Type{S},
-) where {
-    St <: PSY.Storage,
-    D <: BookKeepingwReservationOutage,
-    S <: PM.AbstractPowerModel,
-}
+) where {St <: PSY.Storage, D <: BookKeepingwReservationOutage, S <: PM.AbstractPowerModel}
     devices = PSI.get_available_components(St, sys)
 
     PSI.add_variables!(container, PSI.ActivePowerInVariable, devices, D())
@@ -57,11 +53,7 @@ function PSI.construct_device!(
     ::PSI.ModelConstructStage,
     model::PSI.DeviceModel{St, D},
     ::Type{S},
-) where {
-    St <: PSY.Storage,
-    D <: BookKeepingwReservationOutage,
-    S <: PM.AbstractPowerModel,
-}
+) where {St <: PSY.Storage, D <: BookKeepingwReservationOutage, S <: PM.AbstractPowerModel}
     devices = PSI.get_available_components(St, sys)
 
     PSI.add_constraints!(
@@ -88,25 +80,25 @@ function PSI.construct_device!(
         model,
         S,
     )
-    PSI.add_constraints!(container, PSI.EnergyCapacityConstraint, PSI.EnergyVariable, devices, model, S)
-
-    # Energy Balanace limits
-    PSI.add_constraints!(container, PSI.EnergyBalanceConstraint, devices, model, S)
-
     PSI.add_constraints!(
         container,
-        OutageUpperBoundConstraint,
+        PSI.EnergyCapacityConstraint,
+        PSI.EnergyVariable,
         devices,
         model,
         S,
     )
+
+    # Energy Balanace limits
+    PSI.add_constraints!(container, PSI.EnergyBalanceConstraint, devices, model, S)
+
+    PSI.add_constraints!(container, OutageUpperBoundConstraint, devices, model, S)
 
     PSI.add_feedforward_constraints!(container, model, devices)
 
     PSI.add_constraint_dual!(container, sys, model)
     return
 end
-
 
 function PSI.construct_device!(
     container::PSI.OptimizationContainer,
@@ -196,19 +188,20 @@ function PSI.construct_device!(
         model,
         S,
     )
-    PSI.add_constraints!(container, PSI.EnergyCapacityConstraint, PSI.EnergyVariable, devices, model, S)
+    PSI.add_constraints!(
+        container,
+        PSI.EnergyCapacityConstraint,
+        PSI.EnergyVariable,
+        devices,
+        model,
+        S,
+    )
 
     # Energy Balanace limits
     PSI.add_constraints!(container, PSI.EnergyBalanceConstraint, devices, model, S)
     PSI.add_constraints!(container, PSI.EnergyTargetConstraint, devices, model, S)
 
-    PSI.add_constraints!(
-        container,
-        OutageUpperBoundConstraint,
-        devices,
-        model,
-        S,
-    )
+    PSI.add_constraints!(container, OutageUpperBoundConstraint, devices, model, S)
 
     PSI.add_feedforward_constraints!(container, model, devices)
 
@@ -290,18 +283,19 @@ function PSI.construct_device!(
         model,
         S,
     )
-    PSI.add_constraints!(container, PSI.EnergyCapacityConstraint, PSI.EnergyVariable, devices, model, S)
-
-    # Energy Balanace limits
-    PSI.add_constraints!(container, PSI.EnergyBalanceConstraint, devices, model, S)
-
     PSI.add_constraints!(
         container,
-        OutageUpperBoundConstraint,
+        PSI.EnergyCapacityConstraint,
+        PSI.EnergyVariable,
         devices,
         model,
         S,
     )
+
+    # Energy Balanace limits
+    PSI.add_constraints!(container, PSI.EnergyBalanceConstraint, devices, model, S)
+
+    PSI.add_constraints!(container, OutageUpperBoundConstraint, devices, model, S)
 
     PSI.add_feedforward_constraints!(container, model, devices)
 
@@ -309,14 +303,17 @@ function PSI.construct_device!(
     return
 end
 
-
 function PSI.construct_device!(
     container::PSI.OptimizationContainer,
     sys::PSY.System,
     ::PSI.ArgumentConstructStage,
     model::PSI.DeviceModel{St, D},
     ::Type{S},
-) where {St <: PSY.Storage, D <: EndOfPeriodEnergyTargetOutage, S <: PM.AbstractActivePowerModel}
+) where {
+    St <: PSY.Storage,
+    D <: EndOfPeriodEnergyTargetOutage,
+    S <: PM.AbstractActivePowerModel,
+}
     devices = PSI.get_available_components(St, sys)
 
     PSI.add_variables!(container, PSI.ActivePowerInVariable, devices, D())
@@ -381,19 +378,20 @@ function PSI.construct_device!(
         model,
         S,
     )
-    PSI.add_constraints!(container, PSI.EnergyCapacityConstraint, PSI.EnergyVariable, devices, model, S)
+    PSI.add_constraints!(
+        container,
+        PSI.EnergyCapacityConstraint,
+        PSI.EnergyVariable,
+        devices,
+        model,
+        S,
+    )
 
     # Energy Balanace limits
     PSI.add_constraints!(container, PSI.EnergyBalanceConstraint, devices, model, S)
     PSI.add_constraints!(container, PSI.EnergyTargetConstraint, devices, model, S)
 
-    PSI.add_constraints!(
-        container,
-        OutageUpperBoundConstraint,
-        devices,
-        model,
-        S,
-    )
+    PSI.add_constraints!(container, OutageUpperBoundConstraint, devices, model, S)
 
     PSI.add_feedforward_constraints!(container, model, devices)
 

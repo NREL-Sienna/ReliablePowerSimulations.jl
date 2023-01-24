@@ -7,11 +7,7 @@ function PSI.construct_device!(
     ::PSI.ArgumentConstructStage,
     model::PSI.DeviceModel{T, D},
     ::Type{S},
-) where {
-    T <: PSY.ThermalGen,
-    D <: ThermalStandardUCOutages,
-    S <: PM.AbstractPowerModel,
-}
+) where {T <: PSY.ThermalGen, D <: ThermalStandardUCOutages, S <: PM.AbstractPowerModel}
     devices = PSI.get_available_components(T, sys)
 
     PSI.add_variables!(container, PSI.ActivePowerVariable, devices, D())
@@ -76,11 +72,7 @@ function PSI.construct_device!(
     ::PSI.ModelConstructStage,
     model::PSI.DeviceModel{T, D},
     ::Type{S},
-) where {
-    T <: PSY.ThermalGen,
-    D <: ThermalStandardUCOutages,
-    S <: PM.AbstractPowerModel,
-}
+) where {T <: PSY.ThermalGen, D <: ThermalStandardUCOutages, S <: PM.AbstractPowerModel}
     devices = PSI.get_available_components(T, sys)
 
     PSI.add_constraints!(
@@ -119,7 +111,6 @@ function PSI.construct_device!(
     PSI.add_constraint_dual!(container, sys, model)
     return
 end
-
 
 """
 This function creates the arguments model for a full thermal dispatch formulation depending on combination of devices, device_formulation and system_formulation
@@ -227,7 +218,6 @@ function PSI.construct_device!(
     return
 end
 
-
 """
 This function creates the model for a full thermal dispatch formulation depending on combination of devices, device_formulation and system_formulation
 """
@@ -241,7 +231,12 @@ function PSI.construct_device!(
     devices = PSI.get_available_components(T, sys)
 
     PSI.add_variables!(container, PSI.ActivePowerVariable, devices, ThermalBasicUCOutages())
-    PSI.add_variables!(container, PSI.ReactivePowerVariable, devices, ThermalBasicUCOutages())
+    PSI.add_variables!(
+        container,
+        PSI.ReactivePowerVariable,
+        devices,
+        ThermalBasicUCOutages(),
+    )
     PSI.add_variables!(container, PSI.OnVariable, devices, ThermalBasicUCOutages())
     PSI.add_variables!(container, PSI.StartVariable, devices, ThermalBasicUCOutages())
     PSI.add_variables!(container, PSI.StopVariable, devices, ThermalBasicUCOutages())
@@ -430,7 +425,6 @@ function PSI.construct_device!(
     return
 end
 
-
 function PSI.construct_device!(
     container::PSI.OptimizationContainer,
     sys::PSY.System,
@@ -531,7 +525,6 @@ function PSI.construct_device!(
         model,
         S,
     )
-
 
     PSI.add_feedforward_constraints!(container, model, devices)
 
@@ -637,11 +630,7 @@ function PSI.construct_device!(
     ::PSI.ArgumentConstructStage,
     model::PSI.DeviceModel{T, D},
     ::Type{S},
-) where {
-    T <: PSY.ThermalGen,
-    D <: ThermalRampLimitedOutages,
-    S <: PM.AbstractPowerModel,
-}
+) where {T <: PSY.ThermalGen, D <: ThermalRampLimitedOutages, S <: PM.AbstractPowerModel}
     devices = PSI.get_available_components(T, sys)
 
     PSI.add_variables!(container, PSI.ActivePowerVariable, devices, D())
@@ -699,11 +688,7 @@ function PSI.construct_device!(
     ::PSI.ModelConstructStage,
     model::PSI.DeviceModel{T, D},
     ::Type{S},
-) where {
-    T <: PSY.ThermalGen,
-    D <: ThermalRampLimitedOutages,
-    S <: PM.AbstractPowerModel,
-}
+) where {T <: PSY.ThermalGen, D <: ThermalRampLimitedOutages, S <: PM.AbstractPowerModel}
     devices = PSI.get_available_components(T, sys)
 
     PSI.add_constraints!(
@@ -826,7 +811,6 @@ function PSI.construct_device!(
         S,
     )
 
-
     PSI.add_constraints!(container, OutageRampConstraint, devices, model, S)
 
     PSI.add_feedforward_constraints!(container, model, devices)
@@ -841,11 +825,7 @@ function PSI.construct_device!(
     ::PSI.ArgumentConstructStage,
     model::PSI.DeviceModel{T, D},
     ::Type{S},
-) where {
-    T <: PSY.ThermalGen,
-    D <: ThermalNoMinOutages,
-    S <: PM.AbstractPowerModel,
-}
+) where {T <: PSY.ThermalGen, D <: ThermalNoMinOutages, S <: PM.AbstractPowerModel}
     devices = PSI.get_available_components(T, sys)
 
     PSI.add_variables!(container, PSI.ActivePowerVariable, devices, D())
@@ -902,11 +882,7 @@ function PSI.construct_device!(
     ::PSI.ModelConstructStage,
     model::PSI.DeviceModel{T, D},
     ::Type{S},
-) where {
-    T <: PSY.ThermalGen,
-    D <: ThermalNoMinOutages,
-    S <: PM.AbstractPowerModel,
-}
+) where {T <: PSY.ThermalGen, D <: ThermalNoMinOutages, S <: PM.AbstractPowerModel}
     devices = PSI.get_available_components(T, sys)
 
     PSI.add_constraints!(
@@ -950,11 +926,7 @@ function PSI.construct_device!(
     ::PSI.ArgumentConstructStage,
     model::PSI.DeviceModel{T, D},
     ::Type{S},
-) where {
-    T <: PSY.ThermalGen,
-    D <: ThermalNoMinOutages,
-    S <: PM.AbstractActivePowerModel,
-}
+) where {T <: PSY.ThermalGen, D <: ThermalNoMinOutages, S <: PM.AbstractActivePowerModel}
     devices = PSI.get_available_components(T, sys)
 
     PSI.add_variables!(container, PSI.ActivePowerVariable, devices, D())
@@ -1002,11 +974,7 @@ function PSI.construct_device!(
     ::PSI.ModelConstructStage,
     model::PSI.DeviceModel{T, D},
     ::Type{S},
-) where {
-    T <: PSY.ThermalGen,
-    D <: ThermalNoMinOutages,
-    S <: PM.AbstractActivePowerModel,
-}
+) where {T <: PSY.ThermalGen, D <: ThermalNoMinOutages, S <: PM.AbstractActivePowerModel}
     devices = PSI.get_available_components(T, sys)
 
     PSI.add_constraints!(
@@ -1025,7 +993,6 @@ function PSI.construct_device!(
         model,
         S,
     )
-
 
     PSI.add_feedforward_constraints!(container, model, devices)
 

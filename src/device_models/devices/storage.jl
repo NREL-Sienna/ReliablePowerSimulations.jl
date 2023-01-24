@@ -8,21 +8,7 @@ function PSI.add_constraints!(
     model::PSI.DeviceModel{V, W},
     X::Type{<:PM.AbstractPowerModel},
 ) where {V <: PSY.Storage, W <: PSI.AbstractStorageFormulation}
-    device_outage_ub_parameter!(
-        container,
-        T,
-        PSI.ActivePowerInVariable,
-        devices, 
-        model,
-        X,
-    )
-    device_outage_ub_parameter!(
-        container,
-        T,
-        PSI.ActivePowerOutVariable,
-        devices, 
-        model,
-        X,
-    )
+    device_outage_ub_parameter!(container, T, PSI.ActivePowerInVariable, devices, model, X)
+    device_outage_ub_parameter!(container, T, PSI.ActivePowerOutVariable, devices, model, X)
     return
 end

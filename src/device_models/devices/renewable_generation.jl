@@ -8,13 +8,6 @@ function PSI.add_constraints!(
     model::PSI.DeviceModel{V, W},
     X::Type{<:PM.AbstractActivePowerModel},
 ) where {V <: PSY.RenewableGen, W <: RenewableOutageDispatch}
-    device_outage_ub_parameter!(
-        container,
-        T,
-        U,
-        devices, 
-        model,
-        X,
-    )
+    device_outage_ub_parameter!(container, T, U, devices, model, X)
     return
 end

@@ -4,11 +4,7 @@ function PSI.construct_device!(
     ::PSI.ArgumentConstructStage,
     model::PSI.DeviceModel{H, D},
     ::Type{S},
-) where {
-    H <: PSY.HydroGen,
-    D <: HydroDispatchRunOfRiverOutage,
-    S <: PM.AbstractPowerModel,
-}
+) where {H <: PSY.HydroGen, D <: HydroDispatchRunOfRiverOutage, S <: PM.AbstractPowerModel}
     devices = PSI.get_available_components(H, sys)
 
     PSI.add_variables!(container, PSI.ActivePowerVariable, devices, D())
@@ -63,11 +59,7 @@ function PSI.construct_device!(
     ::PSI.ModelConstructStage,
     model::PSI.DeviceModel{H, D},
     ::Type{S},
-) where {
-    H <: PSY.HydroGen,
-    D <: HydroDispatchRunOfRiverOutage,
-    S <: PM.AbstractPowerModel,
-}
+) where {H <: PSY.HydroGen, D <: HydroDispatchRunOfRiverOutage, S <: PM.AbstractPowerModel}
     devices = PSI.get_available_components(H, sys)
 
     PSI.add_constraints!(
@@ -211,43 +203,26 @@ function PSI.construct_device!(
     return
 end
 
-
-
-
-
-
-
 function PSI.construct_device!(
     container::PSI.OptimizationContainer,
     sys::PSY.System,
     ::PSI.ArgumentConstructStage,
     model::PSI.DeviceModel{H, D},
     ::Type{S},
-) where {H <: PSY.HydroEnergyReservoir, D <: HydroDispatchReservoirStorageOutage, S <: PM.AbstractPowerModel}
+) where {
+    H <: PSY.HydroEnergyReservoir,
+    D <: HydroDispatchReservoirStorageOutage,
+    S <: PM.AbstractPowerModel,
+}
     devices = PSI.get_available_components(H, sys)
 
     PSI.add_variables!(container, PSI.ActivePowerVariable, devices, D())
     PSI.add_variables!(container, PSI.ReactivePowerVariable, devices, D())
     PSI.add_variables!(container, PSI.EnergyVariable, devices, D())
     # PSI.add_variables!(container, OutageVariable, devices, D())
-    PSI.add_variables!(
-        container,
-        PSI.WaterSpillageVariable,
-        devices,
-        D(),
-    )
-    PSI.add_variables!(
-        container,
-        PSI.EnergyShortageVariable,
-        devices,
-        D(),
-    )
-    PSI.add_variables!(
-        container,
-        PSI.EnergySurplusVariable,
-        devices,
-        D(),
-    )
+    PSI.add_variables!(container, PSI.WaterSpillageVariable, devices, D())
+    PSI.add_variables!(container, PSI.EnergyShortageVariable, devices, D())
+    PSI.add_variables!(container, PSI.EnergySurplusVariable, devices, D())
     PSI.add_variables!(container, PSI.EnergyOutput, devices, D())
     PSI.add_to_expression!(
         container,
@@ -364,30 +339,19 @@ function PSI.construct_device!(
     ::PSI.ArgumentConstructStage,
     model::PSI.DeviceModel{H, D},
     ::Type{S},
-) where {H <: PSY.HydroEnergyReservoir, D <: HydroDispatchReservoirStorageOutage, S <: PM.AbstractActivePowerModel}
+) where {
+    H <: PSY.HydroEnergyReservoir,
+    D <: HydroDispatchReservoirStorageOutage,
+    S <: PM.AbstractActivePowerModel,
+}
     devices = PSI.get_available_components(H, sys)
 
     PSI.add_variables!(container, PSI.ActivePowerVariable, devices, D())
     PSI.add_variables!(container, PSI.EnergyVariable, devices, D())
     # PSI.add_variables!(container, OutageVariable, devices, D())
-    PSI.add_variables!(
-        container,
-        PSI.WaterSpillageVariable,
-        devices,
-        D(),
-    )
-    PSI.add_variables!(
-        container,
-        PSI.EnergyShortageVariable,
-        devices,
-        D(),
-    )
-    PSI.add_variables!(
-        container,
-        PSI.EnergySurplusVariable,
-        devices,
-        D(),
-    )
+    PSI.add_variables!(container, PSI.WaterSpillageVariable, devices, D())
+    PSI.add_variables!(container, PSI.EnergyShortageVariable, devices, D())
+    PSI.add_variables!(container, PSI.EnergySurplusVariable, devices, D())
     PSI.add_variables!(container, PSI.EnergyOutput, devices, D())
     PSI.add_to_expression!(
         container,
@@ -478,7 +442,6 @@ function PSI.construct_device!(
     return
 end
 
-
 """
 Construct model for HydroPumpedStorage with PumpedStorage Dispatch Formulation
 with only Active Power
@@ -489,7 +452,11 @@ function PSI.construct_device!(
     ::PSI.ArgumentConstructStage,
     model::PSI.DeviceModel{H, D},
     ::Type{S},
-) where {H <: PSY.HydroPumpedStorage, D <: HydroDispatchPumpedStoragewReservationOutage, S <: PM.AbstractActivePowerModel}
+) where {
+    H <: PSY.HydroPumpedStorage,
+    D <: HydroDispatchPumpedStoragewReservationOutage,
+    S <: PM.AbstractActivePowerModel,
+}
     devices = PSI.get_available_components(H, sys)
 
     PSI.add_variables!(container, PSI.ActivePowerInVariable, devices, D())
@@ -500,12 +467,7 @@ function PSI.construct_device!(
     PSI.add_variables!(container, PSI.EnergyOutput, devices, D())
     # PSI.add_variables!(container, OutageVariable, devices, D())
     if PSI.get_attribute(model, "reservation")
-        PSI.add_variables!(
-            container,
-            PSI.ReservationVariable,
-            devices,
-            D(),
-        )
+        PSI.add_variables!(container, PSI.ReservationVariable, devices, D())
     end
 
     PSI.add_parameters!(container, PSI.InflowTimeSeriesParameter, devices, model)
@@ -580,13 +542,7 @@ function PSI.construct_device!(
     # Energy Balanace limits
     PSI.add_constraints!(container, PSI.EnergyCapacityUpConstraint, devices, model, S)
     PSI.add_constraints!(container, PSI.EnergyCapacityDownConstraint, devices, model, S)
-    PSI.add_constraints!(
-        container,
-        OutageUpperBoundConstraint,
-        devices,
-        model,
-        S,
-    )
+    PSI.add_constraints!(container, OutageUpperBoundConstraint, devices, model, S)
 
     PSI.add_feedforward_constraints!(container, model, devices)
 
