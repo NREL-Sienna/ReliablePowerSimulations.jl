@@ -32,9 +32,9 @@ PSI.initial_condition_variable(
 function _get_data_for_tdc(
     initial_conditions_on::Vector{T},
     initial_conditions_off::Vector{U},
-    initial_conditions_outage::Vector{U},
+    initial_conditions_outage::Vector{V},
     resolution::Dates.TimePeriod,
-) where {T <: InitialCondition, U <: InitialCondition}
+) where {T <: PSI.InitialCondition, U <: PSI.InitialCondition, V <: PSI.InitialCondition}
     steps_per_hour = 60 / Dates.value(Dates.Minute(resolution))
     fraction_of_hour = 1 / steps_per_hour
     lenght_devices_on = length(initial_conditions_on)
@@ -43,12 +43,12 @@ function _get_data_for_tdc(
 
     IS.@assert_op lenght_devices_off == lenght_devices_on
     IS.@assert_op lenght_devices_off == lenght_devices_outage
-    time_params = Vector{UpDown}(undef, lenght_devices_on)
-    ini_conds = Matrix{InitialCondition}(undef, lenght_devices_on, 3)
+    time_params = Vector{PSI.UpDown}(undef, lenght_devices_on)
+    ini_conds = Matrix{PSI.InitialCondition}(undef, lenght_devices_on, 3)
     idx = 0
     for (ix, ic) in enumerate(initial_conditions_on)
-        g = get_component(ic)
-        IS.@assert_op g == get_component(initial_conditions_off[ix])
+        g = PSI.get_component(ic)
+        IS.@assert_op g == PSI.get_component(initial_conditions_off[ix])
         time_limits = PSY.get_time_limits(g)
         name = PSY.get_name(g)
         if time_limits !== nothing
@@ -84,6 +84,7 @@ function PSI.add_constraints!(
     # Use getter functions that don't require creating the keys here
     time_steps = PSI.get_time_steps(container)
     device_names = [PSY.get_name(d) for d in devices]
+    resolution = PSI.get_resolution(container)
 
     # Use getter functions that don't require creating the keys here
     initial_conditions_on =
@@ -91,7 +92,7 @@ function PSI.add_constraints!(
     initial_conditions_off =
         PSI.get_initial_condition(container, PSI.InitialTimeDurationOff(), U)
     initial_conditions_outage =
-        PSI.get_initial_condition(container, PSI.InitialOutageStatus(), U)
+        PSI.get_initial_condition(container, InitialOutageStatus(), U)
     ini_conds, time_params = _get_data_for_tdc(
         initial_conditions_on,
         initial_conditions_off,
@@ -185,7 +186,7 @@ function PSI.add_constraints!(
     PSI.add_semicontinuous_ramp_constraints!(
         container,
         OutageRampConstraint,
-        ActivePowerVariable,
+        PSI.ActivePowerVariable,
         devices,
         model,
         W,
@@ -255,7 +256,7 @@ function PSI.add_constraints!(
     model::PSI.DeviceModel{V, W},
     X::Type{<:PM.AbstractPowerModel},
 ) where {V <: PSY.ThermalGen, W <: AbstractThermalOutageDispatchFormulation}
-    device_outage_ub_parameter!(container, T, PSI.ActivePowerVariable(), devices, model, X)
+    device_outage_ub_parameter!(container, T, PSI.ActivePowerVariable, devices, model, X)
     return
 end
 
@@ -308,7 +309,7 @@ PSI._get_initial_condition_type(
     ::Type{OutageRampConstraint},
     ::Type{<:PSY.ThermalGen},
     ::Type{<:AbstractThermalOutageCommitmentFormulation},
-) = DevicePower
+) = PSI.DevicePower
 
 function PSI.add_constraints!(
     container::PSI.OptimizationContainer,

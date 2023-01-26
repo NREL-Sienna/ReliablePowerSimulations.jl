@@ -6,7 +6,7 @@ function device_linear_rateofchange_outages!(
     model::PSI.DeviceModel{V, W},
     X::Type{<:PM.AbstractPowerModel},
 ) where {
-    S <: Union{PowerAboveMinimumVariable, ActivePowerVariable},
+    S <: Union{PSI.PowerAboveMinimumVariable, PSI.ActivePowerVariable},
     V <: PSY.ThermalGen,
     W <: PSI.AbstractThermalDispatchFormulation,
 }
@@ -32,12 +32,12 @@ function device_linear_rateofchange_outages!(
         PSI.get_parameter_multiplier_array(container, OutageTimeSeriesParameter(), V)
 
     for ic in initial_conditions_power
-        name = get_component_name(ic)
+        name = PSI.get_component_name(ic)
         # This is to filter out devices that dont need a ramping constraint
         name ∉ set_name && continue
-        ramp_limits = PSY.get_ramp_limits(get_component(ic))
-        limits = PSY.get_active_power_limits(get_component(ic))
-        ic_power = get_value(ic)
+        ramp_limits = PSY.get_ramp_limits(PSI.get_component(ic))
+        limits = PSY.get_active_power_limits(PSI.get_component(ic))
+        ic_power = PSI.get_value(ic)
         @debug "add rate_of_change_constraint" name ic_power
         @assert (parameters && isa(ic_power, JuMP.VariableRef)) || !parameters
 

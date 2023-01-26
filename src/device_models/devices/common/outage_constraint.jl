@@ -4,14 +4,14 @@ function device_outage_parameter!(
     devices::IS.FlattenIteratorWrapper{V},
     model::PSI.DeviceModel{V, W},
     X::Type{<:PM.AbstractPowerModel},
-) where {V <: PSY.ThermalGen}
+) where {V <: PSY.ThermalGen, W <: Union{ThermalStandardUCOutages, ThermalBasicUCOutages}}
     time_steps = PSI.get_time_steps(container)
     device_names = [PSY.get_name(d) for d in devices]
     varon = PSI.get_variable(container, PSI.OnVariable(), V)
     varstop = PSI.get_variable(container, PSI.StopVariable(), V)
     varstart = PSI.get_variable(container, PSI.StartVariable(), V)
     initial_conditions_outage =
-        PSI.get_initial_condition(container, InitialOutageStatus(), U)
+        PSI.get_initial_condition(container, InitialOutageStatus(), V)
 
     con_on = PSI.add_constraints_container!(
         container,
@@ -42,7 +42,7 @@ function device_outage_parameter!(
         PSI.get_parameter_multiplier_array(container, OutageTimeSeriesParameter(), V)
 
     for ic in initial_conditions_outage
-        name = get_component_name(ic)
+        name = PSI.get_component_name(ic)
         varz = JuMP.@variable(container.JuMPmodel, base_name = "outage_z_{$(name), 1}")
         vary = JuMP.@variable(container.JuMPmodel, base_name = "outage_y_{$(name), 1}")
         JuMP.@constraint(container.JuMPmodel, varz <= varon[name, 1])
@@ -127,6 +127,7 @@ function device_outage_ub_parameter!(
         PSY.ThermalGen,
     },
     S <: PSI.VariableType,
+    W <: PSI.AbstractDeviceFormulation,
 }
     time_steps = PSI.get_time_steps(container)
     device_names = [PSY.get_name(d) for d in devices]
@@ -169,6 +170,7 @@ function device_outage_ub_parameter!(
         PSY.ThermalGen,
     },
     S <: PSI.ExpressionType,
+    W <: PSI.AbstractDeviceFormulation,
 }
     time_steps = PSI.get_time_steps(container)
     device_names = [PSY.get_name(d) for d in devices]
