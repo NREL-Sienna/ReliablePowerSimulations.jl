@@ -6,9 +6,9 @@ function device_duration_look_ahead_outage!(
     ::Type{T},
 ) where {T <: PSY.ThermalGen}
     time_steps = PSI.get_time_steps(container)
-    varon = PSI.get_variable(container, PSI.OnVariable(), V)
-    varstop = PSI.get_variable(container, PSI.StopVariable(), V)
-    varstart = PSI.get_variable(container, PSI.StartVariable(), V)
+    varon = PSI.get_variable(container, PSI.OnVariable(), T)
+    varstop = PSI.get_variable(container, PSI.StopVariable(), T)
+    varstart = PSI.get_variable(container, PSI.StartVariable(), T)
 
     set_names = [PSI.get_component_name(ic) for ic in initial_duration[:, 1]]
     con_up = PSI.add_constraints_container!(
@@ -28,9 +28,9 @@ function device_duration_look_ahead_outage!(
         meta = "dn",
     )
 
-    param = PSI.get_parameter_array(container, OutageTimeSeriesParameter(), V)
+    param = PSI.get_parameter_array(container, OutageTimeSeriesParameter(), T)
     multiplier =
-        PSI.get_parameter_multiplier_array(container, OutageTimeSeriesParameter(), V)
+        PSI.get_parameter_multiplier_array(container, OutageTimeSeriesParameter(), T)
 
     for t in time_steps
         for (ix, ic) in enumerate(initial_duration[:, 1])
@@ -132,7 +132,7 @@ function device_duration_parameters_outage!(
                 varstop[name, t] * duration_data[ix].up <=
                 expr_up + (
                     1 * duration_data[ix].up -
-                    param[name, t] * multiplier[name, t] * duration_data[ix].up
+                    param[name, t] * duration_data[ix].up
                 )
             )
 
@@ -156,7 +156,7 @@ function device_duration_parameters_outage!(
             else
                 expr_dn += (
                     duration_data[ix].down -
-                    param[name, t - 1] * multiplier[name, t - 1] * duration_data[ix].down
+                    param[name, t - 1] * duration_data[ix].down
                 )
             end
             con_down[name, t] = JuMP.@constraint(

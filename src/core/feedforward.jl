@@ -69,20 +69,33 @@ function PSI.add_feedforward_arguments!(
         devices,
         PSI.get_formulation(model)(),
     )
-    PSI.add_to_expression!(
+
+    PSI.add_variables!(
         container,
-        PSI.ActivePowerRangeExpressionUB,
-        parameter_type,
+        AuxiliaryStartVariable,
         devices,
-        model,
+        PSI.get_formulation(model)(),
     )
-    PSI.add_to_expression!(
+    PSI.add_variables!(
         container,
-        PSI.ActivePowerRangeExpressionLB,
-        parameter_type,
+        AuxiliaryStopVariable,
         devices,
-        model,
+        PSI.get_formulation(model)(),
     )
+    # PSI.add_to_expression!(
+    #     container,
+    #     PSI.ActivePowerRangeExpressionUB,
+    #     parameter_type,
+    #     devices,
+    #     model,
+    # )
+    # PSI.add_to_expression!(
+    #     container,
+    #     PSI.ActivePowerRangeExpressionLB,
+    #     parameter_type,
+    #     devices,
+    #     model,
+    # )
 
     return
 end
@@ -160,6 +173,8 @@ function _add_sc_outage_feedforward_constraints!(
         PSI.get_parameter_multiplier_array(container, OutageTimeSeriesParameter(), V)
 
     varon = PSI.get_variable(container, AuxiliaryOnVariable(), V)
+    varstop = PSI.get_variable(container, AuxiliaryStopVariable(), V)
+    varstart = PSI.get_variable(container, AuxiliaryStartVariable(), V)
 
     cons_aux_lb = PSI.add_constraints_container!(
         container,
@@ -178,6 +193,34 @@ function _add_sc_outage_feedforward_constraints!(
     cons_aux = PSI.add_constraints_container!(
         container,
         AUXILIARY_ON_RANGE(),
+        V,
+        names,
+        time_steps,
+    )
+    cons_aux_stop = PSI.add_constraints_container!(
+        container,
+        AUXILIARY_Stop(),
+        V,
+        names,
+        time_steps,
+    )
+    cons_aux_start = PSI.add_constraints_container!(
+        container,
+        AUXILIARY_Start(),
+        V,
+        names,
+        time_steps,
+    )
+    cons_aux_commit = PSI.add_constraints_container!(
+        container,
+        AUXILIARY_Commit(),
+        V,
+        names,
+        time_steps,
+    )
+    cons_aux_commit_limit = PSI.add_constraints_container!(
+        container,
+        AUXILIARY_Commit_Limit(),
         V,
         names,
         time_steps,
@@ -216,6 +259,24 @@ function _add_sc_outage_feedforward_constraints!(
                 outage_parameter[name, t] * outage_multiplier[name, t] +
                 commitment_param[name, t] * commitment_multiplier[name, t] - 1.0
             )
+            cons_aux_commit_limit[name, t] = JuMP.@constraint(
+                    container.JuMPmodel,
+                    varstart[name, t] + varstop[name, t] <= 1.0
+            )
+            if t >= 2
+                cons_aux_stop[name, t] = JuMP.@constraint(
+                    container.JuMPmodel,
+                    varon[name, t-1] - varon[name, t] <= varstop[name, t]
+                )
+                cons_aux_start[name, t] = JuMP.@constraint(
+                    container.JuMPmodel,
+                    varon[name, t] - varon[name, t-1] <= varstart[name, t]
+                )
+                cons_aux_commit[name, t] = JuMP.@constraint(
+                    container.JuMPmodel,
+                    varon[name, t] - varon[name, t-1] == varstart[name, t] - varstop[name, t]   
+                )
+            end
         end
     end
 

@@ -717,7 +717,7 @@ function PSI.construct_device!(
         S,
     )
 
-    PSI.add_constraints!(container, OutageCommitmentConstraint, devices, model, S)
+    # PSI.add_constraints!(container, OutageCommitmentConstraint, devices, model, S)
 
     PSI.add_constraints!(container, OutageRampConstraint, devices, model, S)
 

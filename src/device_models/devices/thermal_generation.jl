@@ -10,12 +10,20 @@ struct ThermalNoMinOutages <: AbstractThermalOutageDispatchFormulation end
 struct ThermalNoMinRampLimitedOutages <: AbstractThermalOutageDispatchFormulation end
 
 ############## AuxiliaryOnVariable, ThermalGen ####################
-PSI.get_variable_binary(::AuxiliaryOnVariable, ::Type{<:PSY.ThermalGen}, _) = false
+PSI.get_variable_binary(::AuxiliaryOnVariable, ::Type{<:PSY.ThermalGen}, _) = true
 # PSI.get_variable_initial_value(::AuxiliaryOnVariable, d::PSY.ThermalGen, _) =
 #     PSY.get_status(d) ? 1.0 : 0.0
 
 PSI.get_variable_lower_bound(::AuxiliaryOnVariable, d::PSY.ThermalGen, _) = 0.0
 PSI.get_variable_upper_bound(::AuxiliaryOnVariable, d::PSY.ThermalGen, _) = 1.0
+
+PSI.get_variable_binary(::AuxiliaryStartVariable, ::Type{<:PSY.ThermalGen}, _) = true
+PSI.get_variable_lower_bound(::AuxiliaryStartVariable, d::PSY.ThermalGen, _) = 0.0
+PSI.get_variable_upper_bound(::AuxiliaryStartVariable, d::PSY.ThermalGen, _) = 1.0
+
+PSI.get_variable_binary(::AuxiliaryStopVariable, ::Type{<:PSY.ThermalGen}, _) = true
+PSI.get_variable_lower_bound(::AuxiliaryStopVariable, d::PSY.ThermalGen, _) = 0.0
+PSI.get_variable_upper_bound(::AuxiliaryStopVariable, d::PSY.ThermalGen, _) = 1.0
 
 ######## CONSTRAINTS ############
 PSI.initial_condition_default(
@@ -183,7 +191,7 @@ function PSI.add_constraints!(
     model::PSI.DeviceModel{U, V},
     W::Type{<:PM.AbstractPowerModel},
 ) where {U <: PSY.ThermalGen, V <: Union{ThermalStandardUCOutages, ThermalBasicUCOutages}}
-    PSI.add_semicontinuous_ramp_constraints!(
+    add_semicontinuous_ramp_constraints_outages!(
         container,
         OutageRampConstraint,
         PSI.ActivePowerVariable,
@@ -204,7 +212,7 @@ function PSI.add_constraints!(
     device_linear_rateofchange_outages!(
         container,
         T,
-        ActivePowerVariable,
+        PSI.ActivePowerVariable,
         devices,
         model,
         W,
@@ -274,7 +282,7 @@ function PSI.initial_conditions!(
     container::PSI.OptimizationContainer,
     devices::IS.FlattenIteratorWrapper{T},
     formulation::D,
-) where {T <: PSY.ThermalGen, D <: Union{ThermalStandardUCOutages, ThermalBasicUCOutages}}
+) where {T <: PSY.ThermalGen, D <: Union{ThermalStandardUCOutages}}
     PSI.add_initial_condition!(container, devices, formulation, PSI.DeviceStatus())
     PSI.add_initial_condition!(container, devices, formulation, PSI.DevicePower())
     PSI.add_initial_condition!(container, devices, formulation, PSI.InitialTimeDurationOn())
@@ -284,6 +292,17 @@ function PSI.initial_conditions!(
         formulation,
         PSI.InitialTimeDurationOff(),
     )
+    PSI.add_initial_condition!(container, devices, formulation, InitialOutageStatus())
+    return
+end
+
+function PSI.initial_conditions!(
+    container::PSI.OptimizationContainer,
+    devices::IS.FlattenIteratorWrapper{T},
+    formulation::D,
+) where {T <: PSY.ThermalGen, D <: Union{ThermalBasicUCOutages}}
+    PSI.add_initial_condition!(container, devices, formulation, PSI.DeviceStatus())
+    PSI.add_initial_condition!(container, devices, formulation, PSI.DevicePower())
     PSI.add_initial_condition!(container, devices, formulation, InitialOutageStatus())
     return
 end
@@ -311,6 +330,12 @@ PSI._get_initial_condition_type(
     ::Type{<:AbstractThermalOutageCommitmentFormulation},
 ) = PSI.DevicePower
 
+PSI._get_initial_condition_type(
+    ::Type{OutageRampConstraint},
+    ::Type{<:PSY.ThermalGen},
+    ::Type{<:AbstractThermalOutageDispatchFormulation},
+) = PSI.DevicePower
+
 function PSI.add_constraints!(
     container::PSI.OptimizationContainer,
     T::Type{<:PSI.PowerVariableLimitsConstraint},
@@ -322,5 +347,150 @@ function PSI.add_constraints!(
     if !has_semicontinuous_outage_feedforward(model, U)
         PSI.add_range_constraints!(container, T, U, devices, model, X)
     end
+    return
+end
+
+# function PSI._add_pwl_term!(
+#     container::PSI.OptimizationContainer,
+#     component::T,
+#     cost_data::Vector{PSY.VariableCost{Vector{Tuple{Float64, Float64}}}},
+#     ::U,
+#     ::V,
+# ) where {T <: PSY.Component, U <: PSI.VariableType, V <: AbstractThermalOutageDispatchFormulation}
+#     multiplier = PSI.objective_function_multiplier(U(), V())
+#     resolution = PSI.get_resolution(container)
+#     dt = Dates.value(Dates.Second(resolution)) / PSI.SECONDS_IN_HOUR
+#     base_power = PSI.get_base_power(container)
+#     # Re-scale breakpoints by Basepower
+#     name = PSY.get_name(component)
+#     time_steps = PSI.get_time_steps(container)
+#     pwl_cost_expressions = Vector{JuMP.AffExpr}(undef, time_steps[end])
+#     sos_val = PSI._get_sos_value(container, V, component)
+#     for t in time_steps
+#         data = PSY.get_cost(cost_data[t])
+#         is_power_data_compact = PSI._check_pwl_compact_data(component, data, base_power)
+#         if !PSI.uses_compact_power(component, V()) && is_power_data_compact
+#             error(
+#                 "The data provided is not compatible with formulation $V. Use a formulation compatible with Compact Cost Functions",
+#             )
+#             # data = _convert_to_full_variable_cost(data, component)
+#         elseif PSI.uses_compact_power(component, V()) && !is_power_data_compact
+#             data = PSI._convert_to_compact_variable_cost(data)
+#         else
+#             @debug PSI.uses_compact_power(component, V()) name T V
+#             @debug is_power_data_compact name T V
+#         end
+#         slopes = PSY.get_slopes(data)
+#         # First element of the return is the average cost at P_min.
+#         # Shouldn't be passed for convexity check
+#         is_convex = PSI._slope_convexity_check(slopes[2:end])
+#         break_points = map(x -> last(x), data) ./ base_power
+#         PSI._add_pwl_variables!(container, T, name, t, data)
+#         _add_pwl_constraint_outages!(container, component, U(), break_points, sos_val, t)
+#         if !is_convex
+#             PSI._add_pwl_sos_constraint!(container, component, U(), break_points, sos_val, t)
+#         end
+#         pwl_cost = PSI._get_pwl_cost_expression(container, component, t, data, multiplier * dt)
+#         pwl_cost_expressions[t] = pwl_cost
+#     end
+#     return pwl_cost_expressions
+# end
+
+
+function PSI._add_pwl_term!(
+    container::PSI.OptimizationContainer,
+    component::T,
+    data::Vector{NTuple{2, Float64}},
+    ::U,
+    ::V,
+) where {T <: PSY.Component, U <: PSI.VariableType, V <: AbstractThermalOutageDispatchFormulation}
+    multiplier = PSI.objective_function_multiplier(U(), V())
+    resolution = PSI.get_resolution(container)
+    dt = Dates.value(Dates.Second(resolution)) / PSI.SECONDS_IN_HOUR
+    base_power = PSI.get_base_power(container)
+    # Re-scale breakpoints by Basepower
+    name = PSY.get_name(component)
+
+    is_power_data_compact = PSI._check_pwl_compact_data(component, data, base_power)
+
+    if !PSI.uses_compact_power(component, V()) && is_power_data_compact
+        error(
+            "The data provided is not compatible with formulation $V. Use a formulation compatible with Compact Cost Functions",
+        )
+        # data = _convert_to_full_variable_cost(data, component)
+    elseif PSI.uses_compact_power(component, V()) && !is_power_data_compact
+        data = PSI._convert_to_compact_variable_cost(data)
+    else
+        @debug PSI.uses_compact_power(component, V()) name T V
+        @debug is_power_data_compact name T V
+    end
+
+    slopes = PSY.get_slopes(data)
+    # First element of the return is the average cost at P_min.
+    # Shouldn't be passed for convexity check
+    is_convex = PSI._slope_convexity_check(slopes[2:end])
+    time_steps = PSI.get_time_steps(container)
+    pwl_cost_expressions = Vector{JuMP.AffExpr}(undef, time_steps[end])
+    break_points = map(x -> last(x), data) ./ base_power
+    sos_val = PSI._get_sos_value(container, V, component)
+    for t in time_steps
+        PSI._add_pwl_variables!(container, T, name, t, data)
+        _add_pwl_constraint_outages!(container, component, U(), break_points, sos_val, t)
+        if !is_convex
+            PSI._add_pwl_sos_constraint!(container, component, U(), break_points, sos_val, t)
+        end
+        pwl_cost = PSI._get_pwl_cost_expression(container, component, t, data, multiplier * dt)
+        pwl_cost_expressions[t] = pwl_cost
+    end
+    return pwl_cost_expressions
+end
+
+
+function _add_pwl_constraint_outages!(
+    container::PSI.OptimizationContainer,
+    component::T,
+    ::U,
+    break_points::Vector{Float64},
+    sos_status::PSI.SOSStatusVariable,
+    period::Int,
+) where {T <: PSY.Component, U <: PSI.VariableType}
+    variables = PSI.get_variable(container, U(), T)
+    const_container = PSI.lazy_container_addition!(
+        container,
+        PSI.PieceWiseLinearCostConstraint(),
+        T,
+        axes(variables)...,
+    )
+    len_cost_data = length(break_points)
+    jump_model = PSI.get_jump_model(container)
+    pwl_vars = PSI.get_variable(container, PSI.PieceWiseLinearCostVariable(), T)
+    name = PSY.get_name(component)
+    const_container[name, period] = JuMP.@constraint(
+        jump_model,
+        variables[name, period] ==
+        sum(pwl_vars[name, ix, period] * break_points[ix] for ix in 1:len_cost_data)
+    )
+
+    if sos_status == PSI.SOSStatusVariable.NO_VARIABLE
+        bin = 1.0
+        @debug "Using Piecewise Linear cost function but no variable/parameter ref for ON status is passed. Default status will be set to online (1.0)" _group =
+        PSI.LOG_GROUP_COST_FUNCTIONS
+
+    elseif sos_status == PSI.SOSStatusVariable.PARAMETER
+        bin = PSI.get_parameter(container, PSI.OnStatusParameter(), T).parameter_array[name, period]
+        @debug "Using Piecewise Linear cost function with parameter OnStatusParameter, $T" _group =
+        PSI.LOG_GROUP_COST_FUNCTIONS
+    elseif sos_status == PSI.SOSStatusVariable.VARIABLE
+        bin = PSI.get_variable(container, PSI.OnVariable(), T)[name, period]
+        @debug "Using Piecewise Linear cost function with variable OnVariable $T" _group =
+        PSI.LOG_GROUP_COST_FUNCTIONS
+    else
+        @assert false
+    end
+
+    JuMP.@constraint(
+        jump_model,
+        sum(pwl_vars[name, i, period] for i in 1:len_cost_data) <= bin
+    )
     return
 end

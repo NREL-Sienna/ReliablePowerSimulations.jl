@@ -49,7 +49,7 @@ function device_outage_parameter!(
         JuMP.@constraint(container.JuMPmodel, vary <= varon[name, 1])
 
         JuMP.@constraint(container.JuMPmodel, varz <= PSI.get_value(ic))
-        JuMP.@constraint(container.JuMPmodel, vary <= param[name, 1] * multiplier[name, 1])
+        JuMP.@constraint(container.JuMPmodel, vary <= param[name, 1])
 
         JuMP.@constraint(
             container.JuMPmodel,
@@ -57,16 +57,16 @@ function device_outage_parameter!(
         )
         JuMP.@constraint(
             container.JuMPmodel,
-            vary >= param[name, 1] * multiplier[name, 1] + varon[name, 1] - 1.0
+            vary >= param[name, 1] + varon[name, 1] - 1.0
         )
 
         con_on[name, 1] = JuMP.@constraint(
             container.JuMPmodel,
-            varon[name, 1] <= param[name, 1] * multiplier[name, 1]
+            varon[name, 1] <= param[name, 1]
         )
         con_start[name, 1] = JuMP.@constraint(
             container.JuMPmodel,
-            varstart[name, 1] <= param[name, 1] * multiplier[name, 1]
+            varstart[name, 1] <= param[name, 1]
         )
         con_stop[name, 1] =
             JuMP.@constraint(container.JuMPmodel, varstop[name, 1] >= varz - vary)
@@ -81,30 +81,30 @@ function device_outage_parameter!(
 
             JuMP.@constraint(
                 container.JuMPmodel,
-                varz <= param[name, t - 1] * multiplier[name, t - 1]
+                varz <= param[name, t - 1]
             )
             JuMP.@constraint(
                 container.JuMPmodel,
-                vary <= param[name, t] * multiplier[name, t]
+                vary <= param[name, t]
             )
 
             JuMP.@constraint(
                 container.JuMPmodel,
-                varz >= param[name, t - 1] * multiplier[name, t - 1] + varon[name, t] - 1.0
+                varz >= param[name, t - 1] + varon[name, t] - 1.0
             )
             JuMP.@constraint(
                 container.JuMPmodel,
-                vary >= param[name, t] * multiplier[name, t] + varon[name, t] - 1.0
+                vary >= param[name, t] + varon[name, t] - 1.0
             )
             con_stop[name, t] =
                 JuMP.@constraint(container.JuMPmodel, varstop[name, t] >= varz - vary)
             con_start[name, t] = JuMP.@constraint(
                 container.JuMPmodel,
-                varstart[name, t] <= param[name, t] * multiplier[name, t]
+                varstart[name, t] <= param[name, t]
             )
             con_on[name, t] = JuMP.@constraint(
                 container.JuMPmodel,
-                varon[name, t] <= param[name, t] * multiplier[name, t]
+                varon[name, t] <= param[name, t]
             )
         end
     end
