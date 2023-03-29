@@ -144,22 +144,10 @@ function add_sc_outage_feedforward_constraints!(
 }
     time_steps = PSI.get_time_steps(container)
     names = [PSY.get_name(d) for d in devices]
-    constraint_lb = PSI.add_constraints_container!(
-        container,
-        T(),
-        V,
-        names,
-        time_steps,
-        meta = "lb",
-    )
-    constraint_ub = PSI.add_constraints_container!(
-        container,
-        T(),
-        V,
-        names,
-        time_steps,
-        meta = "ub",
-    )
+    constraint_lb =
+        PSI.add_constraints_container!(container, T(), V, names, time_steps, meta = "lb")
+    constraint_ub =
+        PSI.add_constraints_container!(container, T(), V, names, time_steps, meta = "ub")
     array_lb = PSI.get_expression(container, PSI.ActivePowerRangeExpressionLB(), V)
     array_ub = PSI.get_expression(container, PSI.ActivePowerRangeExpressionUB(), V)
     varon = PSI.get_variable(container, AuxiliaryOnVariable(), V)
@@ -222,13 +210,7 @@ function add_device_status_feedforward_constraints!(
         time_steps,
         meta = "outage",
     )
-    cons_aux = PSI.add_constraints_container!(
-        container,
-        T(),
-        V,
-        names,
-        time_steps,
-    )
+    cons_aux = PSI.add_constraints_container!(container, T(), V, names, time_steps)
 
     for d in devices
         name = PSY.get_name(d)
@@ -245,7 +227,8 @@ function add_device_status_feedforward_constraints!(
             )
             cons_aux[name, t] = JuMP.@constraint(
                 container.JuMPmodel,
-                varon[name, t] >= outage_parameter[name, t] + commitment_param[name, t]- 1.0
+                varon[name, t] >=
+                outage_parameter[name, t] + commitment_param[name, t] - 1.0
             )
         end
     end
@@ -287,21 +270,9 @@ function add_device_status_feedforward_constraints!(
         time_steps[2:end],
         meta = "stop",
     )
-    cons_bin = PSI.add_constraints_container!(
-        container,
-        T(),
-        V,
-        names,
-        time_steps,
-        meta = "bin",
-    )
-    cons = PSI.add_constraints_container!(
-        container,
-        T(),
-        V,
-        names,
-        time_steps,
-    )
+    cons_bin =
+        PSI.add_constraints_container!(container, T(), V, names, time_steps, meta = "bin")
+    cons = PSI.add_constraints_container!(container, T(), V, names, time_steps)
 
     for d in devices
         name = PSY.get_name(d)
@@ -313,15 +284,16 @@ function add_device_status_feedforward_constraints!(
             if t >= 2
                 cons_start[name, t] = JuMP.@constraint(
                     container.JuMPmodel,
-                    varon[name, t] - varon[name, t-1] <= varstart[name, t]
+                    varon[name, t] - varon[name, t - 1] <= varstart[name, t]
                 )
                 cons_stop[name, t] = JuMP.@constraint(
                     container.JuMPmodel,
-                    varon[name, t-1] - varon[name, t] <= varstop[name, t]
+                    varon[name, t - 1] - varon[name, t] <= varstop[name, t]
                 )
                 cons[name, t] = JuMP.@constraint(
                     container.JuMPmodel,
-                    varon[name, t] - varon[name, t-1] == varstart[name, t] - varstop[name, t]   
+                    varon[name, t] - varon[name, t - 1] ==
+                    varstart[name, t] - varstop[name, t]
                 )
             end
         end

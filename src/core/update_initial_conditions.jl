@@ -35,7 +35,6 @@ function PSI._get_initial_conditions_value(
     return T(component, PSI.add_jump_parameter(PSI.get_jump_model(container), val))
 end
 
-
 function PSI.get_system_state_value(
     state::PSI.SimulationState,
     ::T,
@@ -70,11 +69,8 @@ function PSI.update_initial_conditions!(
     T <: PSI.InitialCondition{PSI.DeviceStatus, S},
 } where {S <: Union{Float64, JuMP.VariableRef}}
     for ic in ics
-        var_val = PSI.get_system_state_value(
-            state,
-            DeviceStatus(),
-            PSI.get_component_type(ic),
-        )
+        var_val =
+            PSI.get_system_state_value(state, DeviceStatus(), PSI.get_component_type(ic))
         PSI.set_ic_quantity!(ic, var_val[PSI.get_component_name(ic)])
     end
     return

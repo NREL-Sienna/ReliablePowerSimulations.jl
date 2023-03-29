@@ -47,8 +47,8 @@ function device_linear_rateofchange_outages!(
         )
         con_down[name, 1] = JuMP.@constraint(
             container.JuMPmodel,
-            ic_power - expr_dn[name, 1] <= ramp_limits.down * minutes_per_period 
-            + varstop[name, 1] * limits.max
+            ic_power - expr_dn[name, 1] <=
+            ramp_limits.down * minutes_per_period + varstop[name, 1] * limits.max
         )
 
         for t in time_steps[2:end]
@@ -66,7 +66,6 @@ function device_linear_rateofchange_outages!(
     end
     return
 end
-
 
 function add_semicontinuous_ramp_constraints_outages!(
     container::PSI.OptimizationContainer,
@@ -94,9 +93,10 @@ function add_semicontinuous_ramp_constraints_outages!(
     expr_up = PSI.get_expression(container, PSI.ActivePowerRangeExpressionUB(), V)
 
     set_name = [PSY.get_name(r) for r in ramp_devices]
-    con_up = PSI.add_constraints_container!(container, T(), V, set_name, time_steps, meta="up")
+    con_up =
+        PSI.add_constraints_container!(container, T(), V, set_name, time_steps, meta = "up")
     con_down =
-        PSI.add_constraints_container!(container, T(), V, set_name, time_steps, meta="dn")
+        PSI.add_constraints_container!(container, T(), V, set_name, time_steps, meta = "dn")
 
     for ic in initial_conditions_power
         name = PSI.get_component_name(ic)

@@ -64,7 +64,8 @@ function device_duration_look_ahead_outage!(
                 expr_dn += PSI.get_value(initial_duration[ix, 2])
             end
             if t == 1
-                expr_dn += (1 - PSI.get_value(initial_duration[ix, 3])) * duration_data[ix].down
+                expr_dn +=
+                    (1 - PSI.get_value(initial_duration[ix, 3])) * duration_data[ix].down
             else
                 expr_dn += (1 - param[name, t - 1]) * duration_data[ix].down
             end
@@ -130,10 +131,8 @@ function device_duration_parameters_outage!(
             con_up[name, t] = JuMP.@constraint(
                 container.JuMPmodel,
                 varstop[name, t] * duration_data[ix].up <=
-                expr_up + (
-                    1 * duration_data[ix].up -
-                    param[name, t] * duration_data[ix].up
-                )
+                expr_up +
+                (1 * duration_data[ix].up - param[name, t] * duration_data[ix].up)
             )
 
             # Minimum Down-time Constraint
@@ -154,10 +153,8 @@ function device_duration_parameters_outage!(
                     PSI.get_value(initial_duration[ix, 3]) * duration_data[ix].down
                 )
             else
-                expr_dn += (
-                    duration_data[ix].down -
-                    param[name, t - 1] * duration_data[ix].down
-                )
+                expr_dn +=
+                    (duration_data[ix].down - param[name, t - 1] * duration_data[ix].down)
             end
             con_down[name, t] = JuMP.@constraint(
                 container.JuMPmodel,

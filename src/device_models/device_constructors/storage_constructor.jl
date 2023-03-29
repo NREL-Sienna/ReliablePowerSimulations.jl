@@ -105,11 +105,7 @@ function PSI.construct_device!(
     ::PSI.ArgumentConstructStage,
     model::PSI.DeviceModel{St, D},
     ::Type{S},
-) where {
-    St <: PSY.Storage,
-    D <: BookKeepingOutage,
-    S <: PM.AbstractActivePowerModel,
-}
+) where {St <: PSY.Storage, D <: BookKeepingOutage, S <: PM.AbstractActivePowerModel}
     devices = PSI.get_available_components(St, sys)
 
     PSI.add_variables!(container, PSI.ActivePowerInVariable, devices, D())
@@ -148,11 +144,7 @@ function PSI.construct_device!(
     ::PSI.ModelConstructStage,
     model::PSI.DeviceModel{St, D},
     ::Type{S},
-) where {
-    St <: PSY.Storage,
-    D <: BookKeepingOutage,
-    S <: PM.AbstractActivePowerModel,
-}
+) where {St <: PSY.Storage, D <: BookKeepingOutage, S <: PM.AbstractActivePowerModel}
     devices = PSI.get_available_components(St, sys)
 
     PSI.add_constraints!(

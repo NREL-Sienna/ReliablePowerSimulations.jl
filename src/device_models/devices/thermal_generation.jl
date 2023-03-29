@@ -128,7 +128,6 @@ function PSI.add_constraints!(
     return
 end
 
-
 function PSI.add_constraints!(
     container::PSI.OptimizationContainer,
     T::Type{OutageRampConstraint},
@@ -136,7 +135,6 @@ function PSI.add_constraints!(
     model::PSI.DeviceModel{U, V},
     W::Type{<:PM.AbstractPowerModel},
 ) where {U <: PSY.ThermalGen, V <: ThermalNoMinRampLimitedOutages}
-
     parameters = PSI.built_for_recurrent_solves(container)
     time_steps = PSI.get_time_steps(container)
 
@@ -170,12 +168,13 @@ function PSI.add_constraints!(
         @assert (parameters && isa(ic_power, JuMP.VariableRef)) || !parameters
         con_up[name, 1] = JuMP.@constraint(
             container.JuMPmodel,
-            expr_up[name, 1] - ic_power <= ramp_limits.up * minutes_per_period 
+            expr_up[name, 1] - ic_power <= ramp_limits.up * minutes_per_period
         )
         con_down[name, 1] = JuMP.@constraint(
             container.JuMPmodel,
-            ic_power - expr_dn[name, 1] >= ramp_limits.down * minutes_per_period
-            + (limits.max - outage_parameter[name, 1] * limits.max)
+            ic_power - expr_dn[name, 1] >=
+            ramp_limits.down * minutes_per_period +
+            (limits.max - outage_parameter[name, 1] * limits.max)
         )
         for t in time_steps[2:end]
             con_up[name, t] = JuMP.@constraint(
@@ -186,13 +185,13 @@ function PSI.add_constraints!(
             con_down[name, t] = JuMP.@constraint(
                 container.JuMPmodel,
                 variable[name, t - 1] - expr_dn[name, t] >=
-                ramp_limits.down * minutes_per_period + (limits.max - outage_parameter[name, t] * limits.max)
+                ramp_limits.down * minutes_per_period +
+                (limits.max - outage_parameter[name, t] * limits.max)
             )
         end
     end
     return
 end
-
 
 ## Outage Commitment Constraints
 
@@ -275,7 +274,6 @@ function PSI.add_constraints!(
     ::PSI.DeviceModel{U, V},
     ::Type{<:PM.AbstractPowerModel},
 ) where {U <: PSY.ThermalGen, V <: Union{ThermalStandardUCOutages, ThermalBasicUCOutages}}
-
     resolution = PSI.get_resolution(container)
     initial_conditions_on =
         PSI.get_initial_condition(container, PSI.InitialTimeDurationOn(), U)
@@ -363,16 +361,16 @@ function calculate_aux_variable_value!(
 ) where {T <: PSY.ThermalGen}
     devices = get_available_components(T, system)
     time_steps = get_time_steps(container)
-    
+
     if has_container_key(container, OnVariable, T)
         on_variable_results = get_variable(container, OnVariable(), T)
     elseif has_container_key(container, OnStatusParameter, T)
         on_variable_results = get_parameter_array(container, OnStatusParameter(), T)
-    else 
-        on_variable_results =  get_parameter_array(container, OutageTimeSeriesParameter(), T)
+    else
+        on_variable_results = get_parameter_array(container, OutageTimeSeriesParameter(), T)
     end
 
-    outage_param =  get_parameter_array(container, OutageTimeSeriesParameter(), T)
+    outage_param = get_parameter_array(container, OutageTimeSeriesParameter(), T)
     aux_variable_container = get_aux_variable(container, DeviceStatus(), T)
     for d in devices, t in time_steps
         name = PSY.get_name(d)
@@ -390,7 +388,11 @@ function PSI._add_pwl_term!(
     data::Vector{NTuple{2, Float64}},
     ::U,
     ::V,
-) where {T <: PSY.Component, U <: PSI.VariableType, V <: AbstractThermalOutageDispatchFormulation}
+) where {
+    T <: PSY.Component,
+    U <: PSI.VariableType,
+    V <: AbstractThermalOutageDispatchFormulation,
+}
     multiplier = PSI.objective_function_multiplier(U(), V())
     resolution = PSI.get_resolution(container)
     dt = Dates.value(Dates.Second(resolution)) / PSI.SECONDS_IN_HOUR
@@ -424,14 +426,21 @@ function PSI._add_pwl_term!(
         PSI._add_pwl_variables!(container, T, name, t, data)
         _add_pwl_constraint_outages!(container, component, U(), break_points, sos_val, t)
         if !is_convex
-            PSI._add_pwl_sos_constraint!(container, component, U(), break_points, sos_val, t)
+            PSI._add_pwl_sos_constraint!(
+                container,
+                component,
+                U(),
+                break_points,
+                sos_val,
+                t,
+            )
         end
-        pwl_cost = PSI._get_pwl_cost_expression(container, component, t, data, multiplier * dt)
+        pwl_cost =
+            PSI._get_pwl_cost_expression(container, component, t, data, multiplier * dt)
         pwl_cost_expressions[t] = pwl_cost
     end
     return pwl_cost_expressions
 end
-
 
 function _add_pwl_constraint_outages!(
     container::PSI.OptimizationContainer,
@@ -461,16 +470,19 @@ function _add_pwl_constraint_outages!(
     if sos_status == PSI.SOSStatusVariable.NO_VARIABLE
         bin = 1.0
         @debug "Using Piecewise Linear cost function but no variable/parameter ref for ON status is passed. Default status will be set to online (1.0)" _group =
-        PSI.LOG_GROUP_COST_FUNCTIONS
+            PSI.LOG_GROUP_COST_FUNCTIONS
 
     elseif sos_status == PSI.SOSStatusVariable.PARAMETER
-        bin = PSI.get_parameter(container, PSI.OnStatusParameter(), T).parameter_array[name, period]
+        bin = PSI.get_parameter(container, PSI.OnStatusParameter(), T).parameter_array[
+            name,
+            period,
+        ]
         @debug "Using Piecewise Linear cost function with parameter OnStatusParameter, $T" _group =
-        PSI.LOG_GROUP_COST_FUNCTIONS
+            PSI.LOG_GROUP_COST_FUNCTIONS
     elseif sos_status == PSI.SOSStatusVariable.VARIABLE
         bin = PSI.get_variable(container, PSI.OnVariable(), T)[name, period]
         @debug "Using Piecewise Linear cost function with variable OnVariable $T" _group =
-        PSI.LOG_GROUP_COST_FUNCTIONS
+            PSI.LOG_GROUP_COST_FUNCTIONS
     else
         @assert false
     end

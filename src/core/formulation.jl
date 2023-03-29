@@ -1,5 +1,7 @@
-abstract type AbstractThermalOutageDispatchFormulation <: PSI.AbstractThermalDispatchFormulation end
-abstract type AbstractThermalOutageCommitmentFormulation <: PSI.AbstractStandardUnitCommitment end
+abstract type AbstractThermalOutageDispatchFormulation <:
+              PSI.AbstractThermalDispatchFormulation end
+abstract type AbstractThermalOutageCommitmentFormulation <:
+              PSI.AbstractStandardUnitCommitment end
 struct ThermalStandardUCOutages <: AbstractThermalOutageCommitmentFormulation end
 struct ThermalBasicUCOutages <: AbstractThermalOutageCommitmentFormulation end
 struct ThermalDispatchOutages <: AbstractThermalOutageDispatchFormulation end
