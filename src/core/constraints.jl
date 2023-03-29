@@ -6,3 +6,7 @@ struct FeedforwardSemiContinousOutageConstraint <: PSI.ConstraintType end
 struct AUXILIARY_ON_RANGE_LB <: PSI.ConstraintType end
 struct AUXILIARY_ON_RANGE_UB <: PSI.ConstraintType end
 struct AUXILIARY_ON_RANGE <: PSI.ConstraintType end
+struct AUXILIARY_Start <: PSI.ConstraintType end
+struct AUXILIARY_Stop <: PSI.ConstraintType end
+struct AUXILIARY_Commit <: PSI.ConstraintType end
+struct AUXILIARY_Commit_Limit <: PSI.ConstraintType end
