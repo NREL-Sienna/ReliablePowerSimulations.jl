@@ -1,23 +1,9 @@
-abstract type AbstractThermalOutageDispatchFormulation <:
-              PSI.AbstractThermalDispatchFormulation end
-abstract type AbstractThermalOutageCommitmentFormulation <:
-              PSI.AbstractStandardUnitCommitment end
-struct ThermalStandardUCOutages <: AbstractThermalOutageCommitmentFormulation end
-struct ThermalBasicUCOutages <: AbstractThermalOutageCommitmentFormulation end
-struct ThermalDispatchOutages <: AbstractThermalOutageDispatchFormulation end
-struct ThermalRampLimitedOutages <: AbstractThermalOutageDispatchFormulation end
-struct ThermalNoMinOutages <: AbstractThermalOutageDispatchFormulation end
-struct ThermalNoMinRampLimitedOutages <: AbstractThermalOutageDispatchFormulation end
-
 ############## AuxiliaryOnVariable, ThermalGen ####################
 PSI.get_variable_binary(::AuxiliaryOnVariable, ::Type{<:PSY.ThermalGen}, _) = true
-# PSI.get_variable_initial_value(::AuxiliaryOnVariable, d::PSY.ThermalGen, _) =
-#     PSY.get_status(d) ? 1.0 : 0.0
-
 PSI.get_variable_lower_bound(::AuxiliaryOnVariable, d::PSY.ThermalGen, _) = 0.0
 PSI.get_variable_upper_bound(::AuxiliaryOnVariable, d::PSY.ThermalGen, _) = 1.0
 
-PSI.get_variable_binary(::AuxiliaryStartVariable, ::Type{<:PSY.ThermalGen}, _) = true
+PSI.get_variable_binary(::AuxiliaryStartVariable, ::Type{<:PSY.ThßermalGen}, _) = true
 PSI.get_variable_lower_bound(::AuxiliaryStartVariable, d::PSY.ThermalGen, _) = 0.0
 PSI.get_variable_upper_bound(::AuxiliaryStartVariable, d::PSY.ThermalGen, _) = 1.0
 
@@ -25,17 +11,217 @@ PSI.get_variable_binary(::AuxiliaryStopVariable, ::Type{<:PSY.ThermalGen}, _) = 
 PSI.get_variable_lower_bound(::AuxiliaryStopVariable, d::PSY.ThermalGen, _) = 0.0
 PSI.get_variable_upper_bound(::AuxiliaryStopVariable, d::PSY.ThermalGen, _) = 1.0
 
-######## CONSTRAINTS ############
 PSI.initial_condition_default(
     ::InitialOutageStatus,
     d::PSY.ThermalGen,
     ::PSI.AbstractThermalFormulation,
 ) = PSY.get_status(d) ? 1 : 0
+
 PSI.initial_condition_variable(
     ::InitialOutageStatus,
     d::PSY.ThermalGen,
     ::PSI.AbstractThermalFormulation,
 ) = PSI.OnVariable()
+
+PSI.get_variable_lower_bound(
+    ::PSI.ActivePowerVariable,
+    d::PSY.ThermalGen,
+    ::Union{ThermalNoMinOutages, ThermalNoMinRampLimitedOutages},
+) = 0.0
+
+PSI._get_initial_condition_type(
+    ::Type{OutageRampConstraint},
+    ::Type{<:PSY.ThermalGen},
+    ::Type{<:AbstractThermalOutageCommitmentFormulation},
+) = PSI.DevicePower
+
+PSI.get_multiplier_value(
+    ::PSI.TimeSeriesParameter,
+    d::PSY.ThermalGen,
+    ::AbstractThermalOutageDispatchFormulation,
+) = 1.0
+
+PSI.get_multiplier_value(
+    ::PSI.TimeSeriesParameter,
+    d::PSY.ThermalGen,
+    ::AbstractThermalOutageCommitmentFormulation,
+) = 1.0
+
+function PSI.get_default_time_series_names(
+    ::Type{<:PSY.ThermalGen},
+    ::Type{
+        <:Union{
+            AbstractThermalOutageDispatchFormulation,
+            AbstractThermalOutageCommitmentFormulation,
+        },
+    },
+)
+    return Dict{Type{<:PSI.TimeSeriesParameter}, String}(
+        OutageTimeSeriesParameter => "outage",
+    )
+end
+
+######## CONSTRAINTS ############
+
+"""
+Min and max active power limits of generators for thermal dispatch no minimum formulations
+"""
+function PSI.get_min_max_limits(
+    device,
+    ::Type{PSI.ActivePowerVariableLimitsConstraint},
+    ::Type{S},
+) where {S <: Union{ThermalNoMinOutages, ThermalNoMinRampLimitedOutages}}
+    return (min = 0.0, max = PSY.get_active_power_limits(device).max)
+end
+
+### Outage Range Constraints
+
+function PSI.add_constraints!(
+    container::PSI.OptimizationContainer,
+    T::Type{<:PSI.PowerVariableLimitsConstraint},
+    U::Type{<:Union{PSI.VariableType, PSI.ExpressionType}},
+    devices::IS.FlattenIteratorWrapper{V},
+    model::PSI.DeviceModel{V, W},
+    X::Type{<:PM.AbstractPowerModel},
+) where {V <: PSY.ThermalGen, W <: AbstractThermalOutageDispatchFormulation}
+    if !has_semicontinuous_outage_feedforward(model, U)
+        PSI.add_range_constraints!(container, T, U, devices, model, X)
+    end
+    return
+end
+
+### Outage Ramp Constraints
+
+function PSI.add_constraints!(
+    container::PSI.OptimizationContainer,
+    ::Type{OutageRampConstraint},
+    devices::IS.FlattenIteratorWrapper{U},
+    model::PSI.DeviceModel{U, V},
+    W::Type{<:PM.AbstractPowerModel},
+) where {U <: PSY.ThermalGen, V <: Union{ThermalStandardUCOutages, ThermalBasicUCOutages}}
+    add_semicontinuous_ramp_constraints_outages!(
+        container,
+        OutageRampConstraint,
+        PSI.ActivePowerVariable,
+        devices,
+        model,
+        W,
+    )
+    return
+end
+
+function PSI.add_constraints!(
+    container::PSI.OptimizationContainer,
+    T::Type{OutageRampConstraint},
+    devices::IS.FlattenIteratorWrapper{U},
+    model::PSI.DeviceModel{U, V},
+    W::Type{<:PM.AbstractPowerModel},
+) where {U <: PSY.ThermalGen, V <: PSI.AbstractThermalDispatchFormulation}
+    device_linear_rateofchange_outages!(
+        container,
+        T,
+        PSI.ActivePowerVariable,
+        devices,
+        model,
+        W,
+    )
+    return
+end
+
+
+function PSI.add_constraints!(
+    container::PSI.OptimizationContainer,
+    T::Type{OutageRampConstraint},
+    devices::IS.FlattenIteratorWrapper{U},
+    model::PSI.DeviceModel{U, V},
+    W::Type{<:PM.AbstractPowerModel},
+) where {U <: PSY.ThermalGen, V <: ThermalNoMinRampLimitedOutages}
+
+    parameters = PSI.built_for_recurrent_solves(container)
+    time_steps = PSI.get_time_steps(container)
+
+    ramp_devices = PSI._get_ramp_constraint_devices(container, devices)
+    minutes_per_period = PSI._get_minutes_per_period(container)
+    IC = PSI._get_initial_condition_type(T, V, W)
+    initial_conditions_power = PSI.get_initial_condition(container, IC(), V)
+
+    expr_dn = PSI.get_expression(container, PSI.ActivePowerRangeExpressionLB(), V)
+    expr_up = PSI.get_expression(container, PSI.ActivePowerRangeExpressionUB(), V)
+
+    set_name = [PSY.get_name(r) for r in ramp_devices]
+    con_up =
+        PSI.add_constraints_container!(container, T(), V, set_name, time_steps, meta = "up")
+    con_down =
+        PSI.add_constraints_container!(container, T(), V, set_name, time_steps, meta = "dn")
+
+    outage_parameter = PSI.get_parameter_array(container, OutageTimeSeriesParameter(), T)
+    multiplier =
+        PSI.get_parameter_multiplier_array(container, OutageTimeSeriesParameter(), T)
+
+    for ic in initial_conditions_power
+        name = PSI.get_component_name(ic)
+        # This is to filter out devices that dont need a ramping constraint
+        name ∉ set_name && continue
+
+        ramp_limits = PSY.get_ramp_limits(PSI.get_component(ic))
+        limits = PSY.get_active_power_limits(PSI.get_component(ic))
+        ic_power = PSI.get_value(ic)
+        @debug "add rate_of_change_constraint" name ic_power
+        @assert (parameters && isa(ic_power, JuMP.VariableRef)) || !parameters
+        con_up[name, 1] = JuMP.@constraint(
+            container.JuMPmodel,
+            expr_up[name, 1] - ic_power <= ramp_limits.up * minutes_per_period 
+        )
+        con_down[name, 1] = JuMP.@constraint(
+            container.JuMPmodel,
+            ic_power - expr_dn[name, 1] >= ramp_limits.down * minutes_per_period
+            + (limits.max - outage_parameter[name, 1] * limits.max)
+        )
+        for t in time_steps[2:end]
+            con_up[name, t] = JuMP.@constraint(
+                container.JuMPmodel,
+                expr_up[name, t] - variable[name, t - 1] <=
+                ramp_limits.up * minutes_per_period
+            )
+            con_down[name, t] = JuMP.@constraint(
+                container.JuMPmodel,
+                variable[name, t - 1] - expr_dn[name, t] >=
+                ramp_limits.down * minutes_per_period + (limits.max - outage_parameter[name, t] * limits.max)
+            )
+        end
+    end
+    return
+end
+
+
+## Outage Commitment Constraints
+
+function PSI.add_constraints!(
+    container::PSI.OptimizationContainer,
+    T::Type{OutageCommitmentConstraint},
+    devices::IS.FlattenIteratorWrapper{V},
+    model::PSI.DeviceModel{V, W},
+    X::Type{<:PM.AbstractPowerModel},
+) where {V <: PSY.ThermalGen, W <: Union{ThermalStandardUCOutages, ThermalBasicUCOutages}}
+    device_outage_parameter!(container, T, devices, model, X)
+
+    return
+end
+
+## Outage Bound Constraints
+
+function PSI.add_constraints!(
+    container::PSI.OptimizationContainer,
+    T::Type{OutageUpperBoundConstraint},
+    devices::IS.FlattenIteratorWrapper{V},
+    model::PSI.DeviceModel{V, W},
+    X::Type{<:PM.AbstractPowerModel},
+) where {V <: PSY.ThermalGen, W <: AbstractThermalOutageDispatchFormulation}
+    device_outage_ub_parameter!(container, T, PSI.ActivePowerVariable, devices, model, X)
+    return
+end
+
+### Time Constraints
 
 function _get_data_for_tdc(
     initial_conditions_on::Vector{T},
@@ -89,12 +275,8 @@ function PSI.add_constraints!(
     ::PSI.DeviceModel{U, V},
     ::Type{<:PM.AbstractPowerModel},
 ) where {U <: PSY.ThermalGen, V <: Union{ThermalStandardUCOutages, ThermalBasicUCOutages}}
-    # Use getter functions that don't require creating the keys here
-    time_steps = PSI.get_time_steps(container)
-    device_names = [PSY.get_name(d) for d in devices]
-    resolution = PSI.get_resolution(container)
 
-    # Use getter functions that don't require creating the keys here
+    resolution = PSI.get_resolution(container)
     initial_conditions_on =
         PSI.get_initial_condition(container, PSI.InitialTimeDurationOn(), U)
     initial_conditions_off =
@@ -131,142 +313,7 @@ function PSI.add_constraints!(
     return
 end
 
-function _get_data_for_rocc_outage(
-    container::PSI.OptimizationContainer,
-    ::Type{T},
-) where {T <: PSY.ThermalGen}
-    resolution = PSI.get_resolution(container)
-    if resolution > Dates.Minute(1)
-        minutes_per_period = Dates.value(Dates.Minute(resolution))
-    else
-        @warn("Not all formulations support under 1-minute resolutions. Exercise caution.")
-        minutes_per_period = Dates.value(Dates.Second(resolution)) / 60
-    end
-
-    initial_conditions_power = PSI.get_initial_condition(container, PSI.DevicePower(), T)
-    initial_conditions_outage =
-        PSI.get_initial_condition(container, InitialOutageStatus(), T)
-    lenght_devices_power = length(initial_conditions_power)
-    lenght_devices_outage = length(initial_conditions_outage)
-    @assert lenght_devices_power == lenght_devices_outage
-    data = Vector{DeviceOutageRampConstraintInfo}(undef, lenght_devices_power)
-    idx = 0
-    for (ix, ic) in enumerate(initial_conditions_power)
-        g = ic.component
-        @assert g == initial_conditions_outage[ix].component
-        name = PSY.get_name(g)
-        ramp_limits = PSY.get_ramp_limits(g)
-        if !(ramp_limits === nothing)
-            p_lims = PSY.get_active_power_limits(g)
-            max_rate = abs(p_lims.min - p_lims.max) / minutes_per_period
-            if (ramp_limits.up >= max_rate) & (ramp_limits.down >= max_rate)
-                @debug "Generator $(name) has a nonbinding ramp limits. Constraints Skipped"
-                continue
-            else
-                idx += 1
-            end
-            ramp = (
-                up = ramp_limits.up * minutes_per_period,
-                down = ramp_limits.down * minutes_per_period,
-            )
-            data[idx] = DeviceOutageRampConstraintInfo(
-                name,
-                p_lims,
-                ic,
-                initial_conditions_outage[ix],
-                ramp,
-            )
-        end
-    end
-    if idx < lenght_devices_power
-        deleteat!(data, (idx + 1):lenght_devices_power)
-    end
-    return data
-end
-
-function PSI.add_constraints!(
-    container::PSI.OptimizationContainer,
-    ::Type{OutageRampConstraint},
-    devices::IS.FlattenIteratorWrapper{U},
-    model::PSI.DeviceModel{U, V},
-    W::Type{<:PM.AbstractPowerModel},
-) where {U <: PSY.ThermalGen, V <: Union{ThermalStandardUCOutages, ThermalBasicUCOutages}}
-    add_semicontinuous_ramp_constraints_outages!(
-        container,
-        OutageRampConstraint,
-        PSI.ActivePowerVariable,
-        devices,
-        model,
-        W,
-    )
-    return
-end
-
-function PSI.add_constraints!(
-    container::PSI.OptimizationContainer,
-    T::Type{OutageRampConstraint},
-    devices::IS.FlattenIteratorWrapper{U},
-    model::PSI.DeviceModel{U, V},
-    W::Type{<:PM.AbstractPowerModel},
-) where {U <: PSY.ThermalGen, V <: PSI.AbstractThermalDispatchFormulation}
-    device_linear_rateofchange_outages!(
-        container,
-        T,
-        PSI.ActivePowerVariable,
-        devices,
-        model,
-        W,
-    )
-    return
-end
-
-function PSI.get_default_time_series_names(
-    ::Type{<:PSY.ThermalGen},
-    ::Type{
-        <:Union{
-            AbstractThermalOutageDispatchFormulation,
-            AbstractThermalOutageCommitmentFormulation,
-        },
-    },
-)
-    return Dict{Type{<:PSI.TimeSeriesParameter}, String}(
-        OutageTimeSeriesParameter => "outage",
-    )
-end
-
-PSI.get_multiplier_value(
-    ::PSI.TimeSeriesParameter,
-    d::PSY.ThermalGen,
-    ::AbstractThermalOutageDispatchFormulation,
-) = PSY.get_max_active_power(d)
-PSI.get_multiplier_value(
-    ::PSI.TimeSeriesParameter,
-    d::PSY.ThermalGen,
-    ::AbstractThermalOutageCommitmentFormulation,
-) = PSY.get_max_active_power(d)
-
-function PSI.add_constraints!(
-    container::PSI.OptimizationContainer,
-    T::Type{OutageCommitmentConstraint},
-    devices::IS.FlattenIteratorWrapper{V},
-    model::PSI.DeviceModel{V, W},
-    X::Type{<:PM.AbstractPowerModel},
-) where {V <: PSY.ThermalGen, W <: Union{ThermalStandardUCOutages, ThermalBasicUCOutages}}
-    device_outage_parameter!(container, T, devices, model, X)
-
-    return
-end
-
-function PSI.add_constraints!(
-    container::PSI.OptimizationContainer,
-    T::Type{OutageUpperBoundConstraint},
-    devices::IS.FlattenIteratorWrapper{V},
-    model::PSI.DeviceModel{V, W},
-    X::Type{<:PM.AbstractPowerModel},
-) where {V <: PSY.ThermalGen, W <: AbstractThermalOutageDispatchFormulation}
-    device_outage_ub_parameter!(container, T, PSI.ActivePowerVariable, devices, model, X)
-    return
-end
+######## Initial Condition ############
 
 function PSI.initial_conditions!(
     container::PSI.OptimizationContainer,
@@ -307,95 +354,35 @@ function PSI.initial_conditions!(
     return
 end
 
-"""
-Min and max active power limits of generators for thermal dispatch no minimum formulations
-"""
-function PSI.get_min_max_limits(
-    device,
-    ::Type{PSI.ActivePowerVariableLimitsConstraint},
-    ::Type{S},
-) where {S <: Union{ThermalNoMinOutages, ThermalNoMinRampLimitedOutages}}
-    return (min = 0.0, max = PSY.get_active_power_limits(device).max)
-end
+######## Auxiliary Variable Calculation ############
 
-PSI.get_variable_lower_bound(
-    ::PSI.ActivePowerVariable,
-    d::PSY.ThermalGen,
-    ::Union{ThermalNoMinOutages, ThermalNoMinRampLimitedOutages},
-) = 0.0
+function calculate_aux_variable_value!(
+    container::OptimizationContainer,
+    ::AuxVarKey{DeviceStatus, T},
+    system::PSY.System,
+) where {T <: PSY.ThermalGen}
+    devices = get_available_components(T, system)
+    time_steps = get_time_steps(container)
+    
+    if has_container_key(container, OnVariable, T)
+        on_variable_results = get_variable(container, OnVariable(), T)
+    elseif has_container_key(container, OnStatusParameter, T)
+        on_variable_results = get_parameter_array(container, OnStatusParameter(), T)
+    else 
+        on_variable_results =  get_parameter_array(container, OutageTimeSeriesParameter(), T)
+    end
 
-PSI._get_initial_condition_type(
-    ::Type{OutageRampConstraint},
-    ::Type{<:PSY.ThermalGen},
-    ::Type{<:AbstractThermalOutageCommitmentFormulation},
-) = PSI.DevicePower
-
-PSI._get_initial_condition_type(
-    ::Type{OutageRampConstraint},
-    ::Type{<:PSY.ThermalGen},
-    ::Type{<:AbstractThermalOutageDispatchFormulation},
-) = PSI.DevicePower
-
-function PSI.add_constraints!(
-    container::PSI.OptimizationContainer,
-    T::Type{<:PSI.PowerVariableLimitsConstraint},
-    U::Type{<:Union{PSI.VariableType, PSI.ExpressionType}},
-    devices::IS.FlattenIteratorWrapper{V},
-    model::PSI.DeviceModel{V, W},
-    X::Type{<:PM.AbstractPowerModel},
-) where {V <: PSY.ThermalGen, W <: AbstractThermalOutageDispatchFormulation}
-    if !has_semicontinuous_outage_feedforward(model, U)
-        PSI.add_range_constraints!(container, T, U, devices, model, X)
+    outage_param =  get_parameter_array(container, OutageTimeSeriesParameter(), T)
+    aux_variable_container = get_aux_variable(container, DeviceStatus(), T)
+    for d in devices, t in time_steps
+        name = PSY.get_name(d)
+        aux_variable_container[name, t] =
+            jump_value(on_variable_results[name, t]) * jump_value(outage_param[name, t])
     end
     return
 end
 
-# function PSI._add_pwl_term!(
-#     container::PSI.OptimizationContainer,
-#     component::T,
-#     cost_data::Vector{PSY.VariableCost{Vector{Tuple{Float64, Float64}}}},
-#     ::U,
-#     ::V,
-# ) where {T <: PSY.Component, U <: PSI.VariableType, V <: AbstractThermalOutageDispatchFormulation}
-#     multiplier = PSI.objective_function_multiplier(U(), V())
-#     resolution = PSI.get_resolution(container)
-#     dt = Dates.value(Dates.Second(resolution)) / PSI.SECONDS_IN_HOUR
-#     base_power = PSI.get_base_power(container)
-#     # Re-scale breakpoints by Basepower
-#     name = PSY.get_name(component)
-#     time_steps = PSI.get_time_steps(container)
-#     pwl_cost_expressions = Vector{JuMP.AffExpr}(undef, time_steps[end])
-#     sos_val = PSI._get_sos_value(container, V, component)
-#     for t in time_steps
-#         data = PSY.get_cost(cost_data[t])
-#         is_power_data_compact = PSI._check_pwl_compact_data(component, data, base_power)
-#         if !PSI.uses_compact_power(component, V()) && is_power_data_compact
-#             error(
-#                 "The data provided is not compatible with formulation $V. Use a formulation compatible with Compact Cost Functions",
-#             )
-#             # data = _convert_to_full_variable_cost(data, component)
-#         elseif PSI.uses_compact_power(component, V()) && !is_power_data_compact
-#             data = PSI._convert_to_compact_variable_cost(data)
-#         else
-#             @debug PSI.uses_compact_power(component, V()) name T V
-#             @debug is_power_data_compact name T V
-#         end
-#         slopes = PSY.get_slopes(data)
-#         # First element of the return is the average cost at P_min.
-#         # Shouldn't be passed for convexity check
-#         is_convex = PSI._slope_convexity_check(slopes[2:end])
-#         break_points = map(x -> last(x), data) ./ base_power
-#         PSI._add_pwl_variables!(container, T, name, t, data)
-#         _add_pwl_constraint_outages!(container, component, U(), break_points, sos_val, t)
-#         if !is_convex
-#             PSI._add_pwl_sos_constraint!(container, component, U(), break_points, sos_val, t)
-#         end
-#         pwl_cost = PSI._get_pwl_cost_expression(container, component, t, data, multiplier * dt)
-#         pwl_cost_expressions[t] = pwl_cost
-#     end
-#     return pwl_cost_expressions
-# end
-
+######## Objective Function ############
 
 function PSI._add_pwl_term!(
     container::PSI.OptimizationContainer,

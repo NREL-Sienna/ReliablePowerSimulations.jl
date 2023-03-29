@@ -1,6 +1,3 @@
-struct BookKeepingwReservationOutage <: PSI.AbstractStorageFormulation end
-struct EndOfPeriodEnergyTargetOutage <: PSI.AbstractEnergyManagement end
-
 function PSI.add_constraints!(
     container::PSI.OptimizationContainer,
     T::Type{OutageUpperBoundConstraint},

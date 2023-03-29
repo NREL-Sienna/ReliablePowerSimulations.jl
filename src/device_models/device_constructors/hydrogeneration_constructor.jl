@@ -10,7 +10,6 @@ function PSI.construct_device!(
     PSI.add_variables!(container, PSI.ActivePowerVariable, devices, D())
     PSI.add_variables!(container, PSI.ReactivePowerVariable, devices, D())
     PSI.add_variables!(container, PSI.EnergyOutput, devices, D())
-    # PSI.add_variables!(container, OutageVariable, devices, D())
     PSI.add_to_expression!(
         container,
         PSI.ActivePowerBalance,
@@ -122,7 +121,6 @@ function PSI.construct_device!(
 
     PSI.add_variables!(container, PSI.ActivePowerVariable, devices, D())
     PSI.add_variables!(container, PSI.EnergyOutput, devices, D())
-    # PSI.add_variables!(container, OutageVariable, devices, D())
     PSI.add_to_expression!(
         container,
         PSI.ActivePowerBalance,
@@ -219,7 +217,6 @@ function PSI.construct_device!(
     PSI.add_variables!(container, PSI.ActivePowerVariable, devices, D())
     PSI.add_variables!(container, PSI.ReactivePowerVariable, devices, D())
     PSI.add_variables!(container, PSI.EnergyVariable, devices, D())
-    # PSI.add_variables!(container, OutageVariable, devices, D())
     PSI.add_variables!(container, PSI.WaterSpillageVariable, devices, D())
     PSI.add_variables!(container, PSI.EnergyShortageVariable, devices, D())
     PSI.add_variables!(container, PSI.EnergySurplusVariable, devices, D())
@@ -348,7 +345,6 @@ function PSI.construct_device!(
 
     PSI.add_variables!(container, PSI.ActivePowerVariable, devices, D())
     PSI.add_variables!(container, PSI.EnergyVariable, devices, D())
-    # PSI.add_variables!(container, OutageVariable, devices, D())
     PSI.add_variables!(container, PSI.WaterSpillageVariable, devices, D())
     PSI.add_variables!(container, PSI.EnergyShortageVariable, devices, D())
     PSI.add_variables!(container, PSI.EnergySurplusVariable, devices, D())
@@ -465,7 +461,6 @@ function PSI.construct_device!(
     PSI.add_variables!(container, PSI.EnergyVariableDown, devices, D())
     PSI.add_variables!(container, PSI.WaterSpillageVariable, devices, D())
     PSI.add_variables!(container, PSI.EnergyOutput, devices, D())
-    # PSI.add_variables!(container, OutageVariable, devices, D())
     if PSI.get_attribute(model, "reservation")
         PSI.add_variables!(container, PSI.ReservationVariable, devices, D())
     end

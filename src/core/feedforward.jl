@@ -69,7 +69,6 @@ function PSI.add_feedforward_arguments!(
         devices,
         PSI.get_formulation(model)(),
     )
-
     PSI.add_variables!(
         container,
         AuxiliaryStartVariable,
@@ -82,21 +81,6 @@ function PSI.add_feedforward_arguments!(
         devices,
         PSI.get_formulation(model)(),
     )
-    # PSI.add_to_expression!(
-    #     container,
-    #     PSI.ActivePowerRangeExpressionUB,
-    #     parameter_type,
-    #     devices,
-    #     model,
-    # )
-    # PSI.add_to_expression!(
-    #     container,
-    #     PSI.ActivePowerRangeExpressionLB,
-    #     parameter_type,
-    #     devices,
-    #     model,
-    # )
-
     return
 end
 
@@ -121,9 +105,23 @@ function PSI.add_feedforward_constraints!(
                 JuMP.set_lower_bound(v, 0.0)
             end
         end
-        _add_sc_outage_feedforward_constraints!(
+        add_sc_outage_feedforward_constraints!(
             container,
-            FeedforwardSemiContinousOutageConstraint, ## needs to be defined 
+            FeedforwardSemiContinousOutageConstraint,
+            var,
+            devices,
+            model,
+        )
+        add_device_status_feedforward_constraints!(
+            container,
+            FeedforwardDeviceStatusConstraint,
+            var,
+            devices,
+            model,
+        )
+        add_aux_commitment_feedforward_constraints!(
+            container,
+            FeedforwardAuxCommitmentConstraint,
             var,
             devices,
             model,
@@ -132,7 +130,7 @@ function PSI.add_feedforward_constraints!(
     return
 end
 
-function _add_sc_outage_feedforward_constraints!(
+function add_sc_outage_feedforward_constraints!(
     container::PSI.OptimizationContainer,
     ::Type{T},
     ::PSI.VariableKey{U, V},
@@ -152,7 +150,7 @@ function _add_sc_outage_feedforward_constraints!(
         V,
         names,
         time_steps,
-        meta = "$(U)_lb",
+        meta = "lb",
     )
     constraint_ub = PSI.add_constraints_container!(
         container,
@@ -160,79 +158,15 @@ function _add_sc_outage_feedforward_constraints!(
         V,
         names,
         time_steps,
-        meta = "$(U)_ub",
+        meta = "ub",
     )
     array_lb = PSI.get_expression(container, PSI.ActivePowerRangeExpressionLB(), V)
     array_ub = PSI.get_expression(container, PSI.ActivePowerRangeExpressionUB(), V)
-    commitment_param = PSI.get_parameter_array(container, PSI.OnStatusParameter(), V)
-    outage_parameter = PSI.get_parameter_array(container, OutageTimeSeriesParameter(), V)
-
-    commitment_multiplier =
-        PSI.get_parameter_multiplier_array(container, PSI.OnStatusParameter(), V)
-    outage_multiplier =
-        PSI.get_parameter_multiplier_array(container, OutageTimeSeriesParameter(), V)
-
     varon = PSI.get_variable(container, AuxiliaryOnVariable(), V)
-    varstop = PSI.get_variable(container, AuxiliaryStopVariable(), V)
-    varstart = PSI.get_variable(container, AuxiliaryStartVariable(), V)
-
-    cons_aux_lb = PSI.add_constraints_container!(
-        container,
-        AUXILIARY_ON_RANGE_LB(),
-        V,
-        names,
-        time_steps,
-    )
-    cons_aux_ub = PSI.add_constraints_container!(
-        container,
-        AUXILIARY_ON_RANGE_UB(),
-        V,
-        names,
-        time_steps,
-    )
-    cons_aux = PSI.add_constraints_container!(
-        container,
-        AUXILIARY_ON_RANGE(),
-        V,
-        names,
-        time_steps,
-    )
-    cons_aux_stop = PSI.add_constraints_container!(
-        container,
-        AUXILIARY_Stop(),
-        V,
-        names,
-        time_steps,
-    )
-    cons_aux_start = PSI.add_constraints_container!(
-        container,
-        AUXILIARY_Start(),
-        V,
-        names,
-        time_steps,
-    )
-    cons_aux_commit = PSI.add_constraints_container!(
-        container,
-        AUXILIARY_Commit(),
-        V,
-        names,
-        time_steps,
-    )
-    cons_aux_commit_limit = PSI.add_constraints_container!(
-        container,
-        AUXILIARY_Commit_Limit(),
-        V,
-        names,
-        time_steps,
-    )
 
     for d in devices
-        # default set to 1.0, as this implementation doesn't use multiplier
-        # commitment_param[name] = PSI.add_parameter(container.JuMPmodel, 1.0)
         name = PSY.get_name(d)
         for t in time_steps
-            commitment_multiplier[name, t] = 1.0
-            outage_multiplier[name, t] = 1.0
             constraint_ub[name, t] = JuMP.@constraint(
                 container.JuMPmodel,
                 array_ub[name, t] <=
@@ -243,36 +177,149 @@ function _add_sc_outage_feedforward_constraints!(
                 array_lb[name, t] >=
                 PSI.get_variable_lower_bound(U(), d, W()) * varon[name, t]
             )
+        end
+    end
 
-            cons_aux_lb[name, t] = JuMP.@constraint(
+    return
+end
+
+function add_device_status_feedforward_constraints!(
+    container::PSI.OptimizationContainer,
+    ::Type{T},
+    ::PSI.VariableKey{U, V},
+    devices::IS.FlattenIteratorWrapper{V},
+    model::PSI.DeviceModel{V, W},
+) where {
+    T <: FeedforwardDeviceStatusConstraint,
+    U <: Union{PSI.ActivePowerVariable, PSI.PowerAboveMinimumVariable},
+    V <: PSY.Component,
+    W <: PSI.AbstractDeviceFormulation,
+}
+    time_steps = PSI.get_time_steps(container)
+    names = [PSY.get_name(d) for d in devices]
+    commitment_param = PSI.get_parameter_array(container, PSI.OnStatusParameter(), V)
+    outage_parameter = PSI.get_parameter_array(container, OutageTimeSeriesParameter(), V)
+
+    commitment_multiplier =
+        PSI.get_parameter_multiplier_array(container, PSI.OnStatusParameter(), V)
+    outage_multiplier =
+        PSI.get_parameter_multiplier_array(container, OutageTimeSeriesParameter(), V)
+
+    varon = PSI.get_variable(container, AuxiliaryOnVariable(), V)
+    cons_commit = PSI.add_constraints_container!(
+        container,
+        T(),
+        V,
+        names,
+        time_steps,
+        meta = "commit",
+    )
+    cons_outage = PSI.add_constraints_container!(
+        container,
+        T(),
+        V,
+        names,
+        time_steps,
+        meta = "outage",
+    )
+    cons_aux = PSI.add_constraints_container!(
+        container,
+        T(),
+        V,
+        names,
+        time_steps,
+    )
+
+    for d in devices
+        name = PSY.get_name(d)
+        for t in time_steps
+            commitment_multiplier[name, t] = 1.0
+            outage_multiplier[name, t] = 1.0
+            cons_commit[name, t] = JuMP.@constraint(
                 container.JuMPmodel,
-                varon[name, t] <=
-                commitment_param[name, t] * commitment_multiplier[name, t]
+                varon[name, t] <= commitment_param[name, t]
             )
-            cons_aux_ub[name, t] = JuMP.@constraint(
+            cons_outage[name, t] = JuMP.@constraint(
                 container.JuMPmodel,
-                varon[name, t] <= outage_parameter[name, t] * outage_multiplier[name, t]
+                varon[name, t] <= outage_parameter[name, t]
             )
             cons_aux[name, t] = JuMP.@constraint(
                 container.JuMPmodel,
-                varon[name, t] >=
-                outage_parameter[name, t] * outage_multiplier[name, t] +
-                commitment_param[name, t] * commitment_multiplier[name, t] - 1.0
+                varon[name, t] >= outage_parameter[name, t] + commitment_param[name, t]- 1.0
             )
-            cons_aux_commit_limit[name, t] = JuMP.@constraint(
-                    container.JuMPmodel,
-                    varstart[name, t] + varstop[name, t] <= 1.0
+        end
+    end
+
+    return
+end
+
+function add_device_status_feedforward_constraints!(
+    container::PSI.OptimizationContainer,
+    ::Type{T},
+    ::PSI.VariableKey{U, V},
+    devices::IS.FlattenIteratorWrapper{V},
+    model::PSI.DeviceModel{V, W},
+) where {
+    T <: FeedforwardDeviceStatusConstraint,
+    U <: Union{PSI.ActivePowerVariable, PSI.PowerAboveMinimumVariable},
+    V <: PSY.Component,
+    W <: PSI.AbstractDeviceFormulation,
+}
+    time_steps = PSI.get_time_steps(container)
+    names = [PSY.get_name(d) for d in devices]
+    varon = PSI.get_variable(container, AuxiliaryOnVariable(), V)
+    varstop = PSI.get_variable(container, AuxiliaryStopVariable(), V)
+    varstart = PSI.get_variable(container, AuxiliaryStartVariable(), V)
+
+    cons_start = PSI.add_constraints_container!(
+        container,
+        T(),
+        V,
+        names,
+        time_steps[2:end],
+        meta = "start",
+    )
+    cons_stop = PSI.add_constraints_container!(
+        container,
+        T(),
+        V,
+        names,
+        time_steps[2:end],
+        meta = "stop",
+    )
+    cons_bin = PSI.add_constraints_container!(
+        container,
+        T(),
+        V,
+        names,
+        time_steps,
+        meta = "bin",
+    )
+    cons = PSI.add_constraints_container!(
+        container,
+        T(),
+        V,
+        names,
+        time_steps,
+    )
+
+    for d in devices
+        name = PSY.get_name(d)
+        for t in time_steps
+            cons_bin[name, t] = JuMP.@constraint(
+                container.JuMPmodel,
+                varstart[name, t] + varstop[name, t] <= 1.0
             )
             if t >= 2
-                cons_aux_stop[name, t] = JuMP.@constraint(
-                    container.JuMPmodel,
-                    varon[name, t-1] - varon[name, t] <= varstop[name, t]
-                )
-                cons_aux_start[name, t] = JuMP.@constraint(
+                cons_start[name, t] = JuMP.@constraint(
                     container.JuMPmodel,
                     varon[name, t] - varon[name, t-1] <= varstart[name, t]
                 )
-                cons_aux_commit[name, t] = JuMP.@constraint(
+                cons_stop[name, t] = JuMP.@constraint(
+                    container.JuMPmodel,
+                    varon[name, t-1] - varon[name, t] <= varstop[name, t]
+                )
+                cons[name, t] = JuMP.@constraint(
                     container.JuMPmodel,
                     varon[name, t] - varon[name, t-1] == varstart[name, t] - varstop[name, t]   
                 )

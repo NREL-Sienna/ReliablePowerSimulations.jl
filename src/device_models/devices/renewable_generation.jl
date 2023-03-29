@@ -1,5 +1,3 @@
-struct RenewableOutageDispatch <: PSI.AbstractRenewableDispatchFormulation end
-
 function PSI.add_constraints!(
     container::PSI.OptimizationContainer,
     T::Type{OutageUpperBoundConstraint},
@@ -7,7 +5,7 @@ function PSI.add_constraints!(
     devices::IS.FlattenIteratorWrapper{V},
     model::PSI.DeviceModel{V, W},
     X::Type{<:PM.AbstractActivePowerModel},
-) where {V <: PSY.RenewableGen, W <: RenewableOutageDispatch}
+) where {V <: PSY.RenewableGen, W <: RenewableDispatchOutages}
     device_outage_ub_parameter!(container, T, U, devices, model, X)
     return
 end

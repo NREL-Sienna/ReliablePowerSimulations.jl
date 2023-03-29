@@ -1,7 +1,3 @@
-struct HydroDispatchRunOfRiverOutage <: PSI.AbstractHydroDispatchFormulation end
-struct HydroDispatchReservoirStorageOutage <: PSI.AbstractHydroReservoirFormulation end
-struct HydroDispatchPumpedStoragewReservationOutage <: PSI.AbstractHydroReservoirFormulation end
-
 function PSI.add_constraints!(
     container::PSI.OptimizationContainer,
     T::Type{OutageUpperBoundConstraint},

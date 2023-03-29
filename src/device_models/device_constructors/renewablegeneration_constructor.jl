@@ -4,7 +4,7 @@ function PSI.construct_device!(
     ::PSI.ArgumentConstructStage,
     model::PSI.DeviceModel{R, D},
     ::Type{S},
-) where {R <: PSY.RenewableGen, D <: RenewableOutageDispatch, S <: PM.AbstractPowerModel}
+) where {R <: PSY.RenewableGen, D <: RenewableDispatchOutages, S <: PM.AbstractPowerModel}
     devices = PSI.get_available_components(R, sys)
 
     PSI.add_variables!(container, PSI.ActivePowerVariable, devices, D())
@@ -59,7 +59,7 @@ function PSI.construct_device!(
     ::PSI.ModelConstructStage,
     model::PSI.DeviceModel{R, D},
     ::Type{S},
-) where {R <: PSY.RenewableGen, D <: RenewableOutageDispatch, S <: PM.AbstractPowerModel}
+) where {R <: PSY.RenewableGen, D <: RenewableDispatchOutages, S <: PM.AbstractPowerModel}
     devices = PSI.get_available_components(R, sys)
 
     if PSI.has_service_model(model)
@@ -108,7 +108,7 @@ function PSI.construct_device!(
     ::Type{S},
 ) where {
     R <: PSY.RenewableGen,
-    D <: RenewableOutageDispatch,
+    D <: RenewableDispatchOutages,
     S <: PM.AbstractActivePowerModel,
 }
     devices = PSI.get_available_components(R, sys)
@@ -158,7 +158,7 @@ function PSI.construct_device!(
     ::Type{S},
 ) where {
     R <: PSY.RenewableGen,
-    D <: RenewableOutageDispatch,
+    D <: RenewableDispatchOutages,
     S <: PM.AbstractActivePowerModel,
 }
     devices = PSI.get_available_components(R, sys)

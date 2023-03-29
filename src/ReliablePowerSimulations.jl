@@ -10,9 +10,8 @@ export ThermalNoMinOutages
 export HydroDispatchRunOfRiverOutage
 export HydroDispatchReservoirStorageOutage
 export HydroDispatchPumpedStoragewReservationOutage
-export BookKeepingwReservationOutage
-export EndOfPeriodEnergyTargetOutage
-export RenewableOutageDispatch
+export BookKeepingOutage
+export RenewableDispatchOutages
 
 # export SemiContinuousOutagesFF
 #################################################################################

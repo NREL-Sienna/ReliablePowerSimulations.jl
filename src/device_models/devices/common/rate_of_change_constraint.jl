@@ -1,7 +1,7 @@
 function device_linear_rateofchange_outages!(
     container::PSI.OptimizationContainer,
     T::Type{OutageRampConstraint},
-    ::Type{S},
+    U::Type{S},
     devices::IS.FlattenIteratorWrapper{V},
     model::PSI.DeviceModel{V, W},
     X::Type{<:PM.AbstractPowerModel},
@@ -12,7 +12,8 @@ function device_linear_rateofchange_outages!(
 }
     parameters = PSI.built_for_recurrent_solves(container)
     time_steps = PSI.get_time_steps(container)
-    variable = PSI.get_variable(container, PSI.ActivePowerVariable(), V)
+
+    variable = get_variable(container, U(), V)
     varstart = PSI.get_variable(container, AuxiliaryStartVariable(), V)
     varstop = PSI.get_variable(container, AuxiliaryStopVariable(), V)
 
@@ -29,9 +30,6 @@ function device_linear_rateofchange_outages!(
         PSI.add_constraints_container!(container, T(), V, set_name, time_steps, meta = "up")
     con_down =
         PSI.add_constraints_container!(container, T(), V, set_name, time_steps, meta = "dn")
-    outage_parameter = PSI.get_parameter_array(container, OutageTimeSeriesParameter(), V)
-    multiplier =
-        PSI.get_parameter_multiplier_array(container, OutageTimeSeriesParameter(), V)
 
     for ic in initial_conditions_power
         name = PSI.get_component_name(ic)
@@ -41,28 +39,27 @@ function device_linear_rateofchange_outages!(
         limits = PSY.get_active_power_limits(PSI.get_component(ic))
         ic_power = PSI.get_value(ic)
         @debug "add rate_of_change_constraint" name ic_power
-        @assert (parameters && isa(ic_power, PJ.ParameterRef)) || !parameters
-
+        @assert (parameters && isa(ic_power, JuMP.VariableRef)) || !parameters
         con_up[name, 1] = JuMP.@constraint(
             container.JuMPmodel,
             expr_up[name, 1] - ic_power <=
             ramp_limits.up * minutes_per_period + varstart[name, 1] * limits.min
         )
-        name == "BASTROP_ENERGY_CENTER" && @show (limits, JuMP.value(outage_parameter[name, 1]), JuMP.value(ic_power))
         con_down[name, 1] = JuMP.@constraint(
             container.JuMPmodel,
-            ic_power - expr_dn[name, 1] <= ramp_limits.down * minutes_per_period + varstop[name, 1] * limits.max
+            ic_power - expr_dn[name, 1] <= ramp_limits.down * minutes_per_period 
+            + varstop[name, 1] * limits.max
         )
 
         for t in time_steps[2:end]
             con_up[name, t] = JuMP.@constraint(
                 container.JuMPmodel,
-                expr_up[name, t] - expr_up[name, t-1] <=
+                expr_up[name, t] - variable[name, t - 1] <=
                 ramp_limits.up * minutes_per_period + varstart[name, t] * limits.min
             )
             con_down[name, t] = JuMP.@constraint(
                 container.JuMPmodel,
-                expr_dn[name, t-1] - expr_dn[name, t] <=
+                variable[name, t - 1] - expr_dn[name, t] <=
                 ramp_limits.down * minutes_per_period + varstop[name, t] * limits.max
             )
         end
@@ -100,7 +97,6 @@ function add_semicontinuous_ramp_constraints_outages!(
     con_up = PSI.add_constraints_container!(container, T(), V, set_name, time_steps, meta="up")
     con_down =
         PSI.add_constraints_container!(container, T(), V, set_name, time_steps, meta="dn")
-    outage_parameter = PSI.get_parameter_array(container, OutageTimeSeriesParameter(), V)
 
     for ic in initial_conditions_power
         name = PSI.get_component_name(ic)
@@ -111,7 +107,7 @@ function add_semicontinuous_ramp_constraints_outages!(
         power_limits = PSY.get_active_power_limits(device)
         ic_power = PSI.get_value(ic)
         @debug "add rate_of_change_constraint" name ic_power
-        @assert (parameters && isa(ic_power, PJ.ParameterRef)) || !parameters
+        @assert (parameters && isa(ic_power, JuMP.VariableRef)) || !parameters
         con_up[name, 1] = JuMP.@constraint(
             container.JuMPmodel,
             expr_up[name, 1] - ic_power <=

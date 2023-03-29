@@ -18,10 +18,9 @@ function PSI.construct_device!(
 
     PSI.add_variables!(container, PSI.TimeDurationOn, devices, D())
     PSI.add_variables!(container, PSI.TimeDurationOff, devices, D())
+    PSI.add_variables!(container, DeviceStatus, devices, D())
 
     PSI.add_parameters!(container, OutageTimeSeriesParameter, devices, model)
-
-    # PSI.add_variables!(container, OutageVariable, devices, D())
 
     PSI.initial_conditions!(container, devices, D())
 
@@ -100,9 +99,6 @@ function PSI.construct_device!(
         S,
     )
     PSI.add_constraints!(container, PSI.CommitmentConstraint, devices, model, S)
-    # PSI.add_constraints!(container, PSI.RampConstraint, devices, model, S)
-    # PSI.add_constraints!(container, PSI.DurationConstraint, devices, model, S)
-
     PSI.add_constraints!(container, OutageCommitmentConstraint, devices, model, S)
     PSI.add_constraints!(container, OutageRampConstraint, devices, model, S)
     PSI.add_constraints!(container, OutageTimeConstraint, devices, model, S)
@@ -135,10 +131,9 @@ function PSI.construct_device!(
 
     PSI.add_variables!(container, PSI.TimeDurationOn, devices, D())
     PSI.add_variables!(container, PSI.TimeDurationOff, devices, D())
+    PSI.add_variables!(container, DeviceStatus, devices, D())
 
     PSI.add_parameters!(container, OutageTimeSeriesParameter, devices, model)
-
-    # PSI.add_variables!(container, OutageVariable, devices, D())
 
     PSI.initial_conditions!(container, devices, D())
 
@@ -205,9 +200,6 @@ function PSI.construct_device!(
     )
 
     PSI.add_constraints!(container, PSI.CommitmentConstraint, devices, model, S)
-    # PSI.add_constraints!(container, PSI.RampConstraint, devices, model, S)
-    # PSI.add_constraints!(container, PSI.DurationConstraint, devices, model, S)
-
     PSI.add_constraints!(container, OutageCommitmentConstraint, devices, model, S)
     PSI.add_constraints!(container, OutageRampConstraint, devices, model, S)
     PSI.add_constraints!(container, OutageTimeConstraint, devices, model, S)
@@ -241,7 +233,7 @@ function PSI.construct_device!(
     PSI.add_variables!(container, PSI.StartVariable, devices, ThermalBasicUCOutages())
     PSI.add_variables!(container, PSI.StopVariable, devices, ThermalBasicUCOutages())
 
-    # PSI.add_variables!(container, OutageVariable, devices, D())
+    PSI.add_variables!(container, DeviceStatus, devices, D())
 
     PSI.add_parameters!(container, OutageTimeSeriesParameter, devices, model)
 
@@ -323,7 +315,6 @@ function PSI.construct_device!(
         S,
     )
     PSI.add_constraints!(container, PSI.CommitmentConstraint, devices, model, S)
-
     PSI.add_constraints!(container, OutageCommitmentConstraint, devices, model, S)
     PSI.add_constraints!(container, OutageRampConstraint, devices, model, S)
 
@@ -348,10 +339,9 @@ function PSI.construct_device!(
     PSI.add_variables!(container, PSI.OnVariable, devices, ThermalBasicUCOutages())
     PSI.add_variables!(container, PSI.StartVariable, devices, ThermalBasicUCOutages())
     PSI.add_variables!(container, PSI.StopVariable, devices, ThermalBasicUCOutages())
+    PSI.add_variables!(container, DeviceStatus, devices, D())
 
     PSI.add_parameters!(container, OutageTimeSeriesParameter, devices, model)
-
-    # PSI.add_variables!(container, OutageVariable, devices, D())
 
     PSI.initial_conditions!(container, devices, ThermalBasicUCOutages())
 
@@ -416,7 +406,6 @@ function PSI.construct_device!(
     )
 
     PSI.add_constraints!(container, PSI.CommitmentConstraint, devices, model, S)
-
     PSI.add_constraints!(container, OutageCommitmentConstraint, devices, model, S)
     PSI.add_constraints!(container, OutageRampConstraint, devices, model, S)
 
@@ -441,7 +430,7 @@ function PSI.construct_device!(
     PSI.add_variables!(container, PSI.ActivePowerVariable, devices, D())
     PSI.add_variables!(container, PSI.ReactivePowerVariable, devices, D())
     PSI.add_variables!(container, AuxiliaryOnVariable, devices, D())
-    # PSI.add_variables!(container, OutageVariable, devices, D())
+    PSI.add_variables!(container, DeviceStatus, devices, D())
 
     PSI.add_parameters!(container, OutageTimeSeriesParameter, devices, model)
 
@@ -547,8 +536,7 @@ function PSI.construct_device!(
     devices = PSI.get_available_components(T, sys)
 
     PSI.add_variables!(container, PSI.ActivePowerVariable, devices, D())
-    # PSI.add_variables!(container, OutageVariable, devices, D())
-    # PSI.add_variables!(container, AuxiliaryOnVariable, devices, D())
+    PSI.add_variables!(container, DeviceStatus, devices, D())
 
     PSI.add_parameters!(container, OutageTimeSeriesParameter, devices, model)
 
@@ -635,8 +623,7 @@ function PSI.construct_device!(
 
     PSI.add_variables!(container, PSI.ActivePowerVariable, devices, D())
     PSI.add_variables!(container, PSI.ReactivePowerVariable, devices, D())
-    # PSI.add_variables!(container, OutageVariable, devices, D())
-    # PSI.add_variables!(container, AuxiliaryOnVariable, devices, D())
+    PSI.add_variables!(container, DeviceStatus, devices, D())
 
     PSI.add_parameters!(container, OutageTimeSeriesParameter, devices, model)
 
@@ -717,8 +704,6 @@ function PSI.construct_device!(
         S,
     )
 
-    # PSI.add_constraints!(container, OutageCommitmentConstraint, devices, model, S)
-
     PSI.add_constraints!(container, OutageRampConstraint, devices, model, S)
 
     PSI.add_feedforward_constraints!(container, model, devices)
@@ -742,9 +727,7 @@ function PSI.construct_device!(
     devices = PSI.get_available_components(T, sys)
 
     PSI.add_variables!(container, PSI.ActivePowerVariable, devices, D())
-    # PSI.add_variables!(container, OutageVariable, devices, D())
-    # PSI.add_variables!(container, AuxiliaryOnVariable, devices, D())
-
+    PSI.add_variables!(container, DeviceStatus, devices, D())
     PSI.add_parameters!(container, OutageTimeSeriesParameter, devices, model)
 
     PSI.initial_conditions!(container, devices, D())
@@ -830,8 +813,7 @@ function PSI.construct_device!(
 
     PSI.add_variables!(container, PSI.ActivePowerVariable, devices, D())
     PSI.add_variables!(container, PSI.ReactivePowerVariable, devices, D())
-    # PSI.add_variables!(container, OutageVariable, devices, D())
-
+    PSI.add_variables!(container, DeviceStatus, devices, D())
     PSI.initial_conditions!(container, devices, D())
 
     PSI.add_parameters!(container, OutageTimeSeriesParameter, devices, model)
@@ -930,7 +912,7 @@ function PSI.construct_device!(
     devices = PSI.get_available_components(T, sys)
 
     PSI.add_variables!(container, PSI.ActivePowerVariable, devices, D())
-    # PSI.add_variables!(container, OutageVariable, devices, D())
+    PSI.add_variables!(container, DeviceStatus, devices, D())
 
     PSI.add_parameters!(container, OutageTimeSeriesParameter, devices, model)
 
@@ -1015,8 +997,7 @@ function PSI.construct_device!(
 
     PSI.add_variables!(container, PSI.ActivePowerVariable, devices, D())
     PSI.add_variables!(container, PSI.ReactivePowerVariable, devices, D())
-    # PSI.add_variables!(container, OutageVariable, devices, D())
-
+    PSI.add_variables!(container, DeviceStatus, devices, D())
     PSI.add_parameters!(container, OutageTimeSeriesParameter, devices, model)
 
     PSI.initial_conditions!(container, devices, D())
@@ -1124,8 +1105,7 @@ function PSI.construct_device!(
     devices = PSI.get_available_components(T, sys)
 
     PSI.add_variables!(container, PSI.ActivePowerVariable, devices, D())
-    # PSI.add_variables!(container, OutageVariable, devices, D())
-
+    PSI.add_variables!(container, DeviceStatus, devices, D())
     PSI.add_parameters!(container, OutageTimeSeriesParameter, devices, model)
 
     PSI.initial_conditions!(container, devices, D())
