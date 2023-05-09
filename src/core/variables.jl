@@ -1,2 +1,5 @@
+struct AuxiliaryOnVariable <: PSI.VariableType end
+struct AuxiliaryStartVariable <: PSI.VariableType end
+struct AuxiliaryStopVariable <: PSI.VariableType end
 
-const OUTAGE = "outage"
+struct DeviceStatus <: PSI.AuxVariableType end

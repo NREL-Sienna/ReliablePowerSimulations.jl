@@ -1,114 +1,24 @@
-struct HydroDispatchRunOfRiverOutage <: PSI.AbstractHydroDispatchFormulation end
-struct HydroDispatchReservoirStorageOutage <: PSI.AbstractHydroReservoirFormulation end
-struct HydroDispatchPumpedStoragewReservationOutage <: PSI.AbstractHydroReservoirFormulation end
-
-function outage_constraints!(
-    optimization_container::PSI.OptimizationContainer,
-    devices::IS.FlattenIteratorWrapper{T},
-    model::PSI.DeviceModel{T, D},
-    ::Type{S},
-    feedforward::Union{Nothing, PSI.AbstractAffectFeedForward},
-) where {T <: PSY.HydroGen, S <: PM.AbstractPowerModel, D <: PSI.AbstractHydroFormulation}
-    parameters = PSI.model_has_parameters(optimization_container)
-    resolution = PSI.model_resolution(optimization_container)
-
-    forecast_label = "outage"
-    constraint_infos = Vector{DeviceOutageConstraintInfo}()
-    for d in devices
-        name = PSY.get_name(d)
-        info = DeviceOutageConstraintInfo(
-            name,
-            nothing,
-            1.0,
-            PSI.get_time_series(optimization_container, d, forecast_label),
-        )
-        push!(constraint_infos, info)
-    end
-
-    if !(isempty(devices))
-        if parameters
-            device_outage_ub_parameter!(
-                optimization_container,
-                constraint_infos,
-                PSI.make_constraint_name(OUTAGE, T),
-                PSI.make_variable_name(PSI.ActivePowerVariable, T),
-                PSI.UpdateRef{T}(OUTAGE, forecast_label),
-            )
-        else
-            device_outage_ub!(
-                optimization_container,
-                constraint_infos,
-                PSI.make_constraint_name(OUTAGE, T),
-                PSI.make_variable_name(PSI.ActivePowerVariable, T),
-            )
-        end
-    else
-        @warn "Data doesn't contain generators of type $T, consider adjusting your formulation"
-    end
-
+function PSI.add_constraints!(
+    container::PSI.OptimizationContainer,
+    T::Type{OutageUpperBoundConstraint},
+    U::Type{<:Union{PSI.VariableType, PSI.ExpressionType}},
+    devices::IS.FlattenIteratorWrapper{V},
+    model::PSI.DeviceModel{V, W},
+    X::Type{<:PM.AbstractPowerModel},
+) where {V <: PSY.HydroGen, W <: PSI.AbstractHydroFormulation}
+    device_outage_ub_parameter!(container, T, U, devices, model, X)
     return
 end
 
-function outage_constraints!(
-    optimization_container::PSI.OptimizationContainer,
-    devices::IS.FlattenIteratorWrapper{T},
-    model::PSI.DeviceModel{T, D},
-    ::Type{S},
-    feedforward::Union{Nothing, PSI.AbstractAffectFeedForward},
-) where {
-    T <: PSY.HydroPumpedStorage,
-    S <: PM.AbstractPowerModel,
-    D <: PSI.AbstractHydroFormulation,
-}
-    parameters = PSI.model_has_parameters(optimization_container)
-    resolution = PSI.model_resolution(optimization_container)
-
-    forecast_label = "outage"
-    constraint_infos = Vector{DeviceOutageConstraintInfo}()
-    for d in devices
-        name = PSY.get_name(d)
-        info = DeviceOutageConstraintInfo(
-            name,
-            nothing,
-            1.0,
-            PSI.get_time_series(optimization_container, d, forecast_label),
-        )
-        push!(constraint_infos, info)
-    end
-
-    if !(isempty(devices))
-        if parameters
-            device_outage_ub_parameter!(
-                optimization_container,
-                constraint_infos,
-                PSI.make_constraint_name(OUTAGE, T),
-                PSI.make_variable_name(PSI.ActivePowerInVariable, T),
-                PSI.UpdateRef{T}(OUTAGE, forecast_label),
-            )
-            device_outage_ub_parameter!(
-                optimization_container,
-                constraint_infos,
-                PSI.make_constraint_name(OUTAGE, T),
-                PSI.make_variable_name(PSI.ActivePowerOutVariable, T),
-                PSI.UpdateRef{T}(OUTAGE, forecast_label),
-            )
-        else
-            device_outage_ub!(
-                optimization_container,
-                constraint_infos,
-                PSI.make_constraint_name(OUTAGE, T),
-                PSI.make_variable_name(PSI.ActivePowerInVariable, T),
-            )
-            device_outage_ub!(
-                optimization_container,
-                constraint_infos,
-                PSI.make_constraint_name(OUTAGE, T),
-                PSI.make_variable_name(PSI.ActivePowerOutVariable, T),
-            )
-        end
-    else
-        @warn "Data doesn't contain generators of type $T, consider adjusting your formulation"
-    end
+function PSI.add_constraints!(
+    container::PSI.OptimizationContainer,
+    T::Type{OutageUpperBoundConstraint},
+    devices::IS.FlattenIteratorWrapper{V},
+    model::PSI.DeviceModel{V, W},
+    X::Type{<:PM.AbstractActivePowerModel},
+) where {V <: PSY.HydroPumpedStorage, W <: PSI.AbstractHydroFormulation}
+    device_outage_ub_parameter!(container, T, PSI.ActivePowerInVariable, devices, model, X)
+    device_outage_ub_parameter!(container, T, PSI.ActivePowerOutVariable, devices, model, X)
 
     return
 end

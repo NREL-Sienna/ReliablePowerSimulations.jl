@@ -1,141 +1,164 @@
-# TODO: docstrings
-@doc raw"""
-
-"""
 function device_duration_look_ahead_outage!(
-    optimization_container::PSI.OptimizationContainer,
-    constraint_info::Vector{DeviceDurationConstraintInfo},
-    cons_name::Symbol,
-    var_names::Tuple{Symbol, Symbol, Symbol},
-)
-    time_steps = PSI.model_time_steps(optimization_container)
-    varon = PSI.get_variable(optimization_container, var_names[1])
-    varstart = PSI.get_variable(optimization_container, var_names[2])
-    varstop = PSI.get_variable(optimization_container, var_names[3])
+    container::PSI.OptimizationContainer,
+    duration_data::Vector{PSI.UpDown},
+    initial_duration::Matrix{PSI.InitialCondition},
+    cons_type::OutageTimeConstraint,
+    ::Type{T},
+) where {T <: PSY.ThermalGen}
+    time_steps = PSI.get_time_steps(container)
+    varon = PSI.get_variable(container, PSI.OnVariable(), T)
+    varstop = PSI.get_variable(container, PSI.StopVariable(), T)
+    varstart = PSI.get_variable(container, PSI.StartVariable(), T)
 
-    name_up = PSI.middle_rename(cons_name, PSI.PSI_NAME_DELIMITER, "up")
-    name_down = PSI.middle_rename(cons_name, PSI.PSI_NAME_DELIMITER, "dn")
+    set_names = [PSI.get_component_name(ic) for ic in initial_duration[:, 1]]
+    con_up = PSI.add_constraints_container!(
+        container,
+        cons_type,
+        T,
+        set_names,
+        time_steps,
+        meta = "up",
+    )
+    con_down = PSI.add_constraints_container!(
+        container,
+        cons_type,
+        T,
+        set_names,
+        time_steps,
+        meta = "dn",
+    )
 
-    set_names = [PSI.get_component_name(ic) for ic in constraint_info]
-    con_up = PSI.add_cons_container!(optimization_container, name_up, set_names, time_steps)
-    con_down =
-        PSI.add_cons_container!(optimization_container, name_down, set_names, time_steps)
+    param = PSI.get_parameter_array(container, OutageTimeSeriesParameter(), T)
+    multiplier =
+        PSI.get_parameter_multiplier_array(container, OutageTimeSeriesParameter(), T)
 
     for t in time_steps
-        for cont in constraint_info
-            name = PSI.get_component_name(cont)
+        for (ix, ic) in enumerate(initial_duration[:, 1])
+            name = PSI.get_component_name(ic)
             # Minimum Up-time Constraint
-            expr_up =
-                JuMP.GenericAffExpr{Float64, PSI._variable_type(optimization_container)}(0)
-            for i in (t - cont.duration_data.up + 1):t
+            expr_up = JuMP.GenericAffExpr{Float64, JuMP.VariableRef}(0)
+            for i in (t - duration_data[ix].up + 1):t
                 if i in time_steps
+                    i = Int64(i)
                     JuMP.add_to_expression!(expr_up, varon[name, i])
                 end
             end
-            if t <= cont.duration_data.up
-                expr_up += cont.initial_duration[1].value
+            if t <= duration_data[ix].up
+                expr_up += PSI.get_value(ic)
             end
             con_up[name, t] = JuMP.@constraint(
-                optimization_container.JuMPmodel,
-                varstop[name, t] * cont.duration_data.up - expr_up <=
-                cont.timeseries[t] * cont.duration_data.up
+                container.JuMPmodel,
+                varstop[name, t] * duration_data[ix].up <=
+                expr_up + (1 - param[name, t]) * duration_data[ix].up
             )
 
             # Minimum Down-time Constraint
-            expr_dn =
-                JuMP.GenericAffExpr{Float64, PSI._variable_type(optimization_container)}(0)
-            for i in (t - cont.duration_data.down + 1):t
+            expr_dn = JuMP.GenericAffExpr{Float64, JuMP.VariableRef}(0)
+            for i in (t - duration_data[ix].down + 1):t
                 if i in time_steps
+                    i = Int64(i)
                     JuMP.add_to_expression!(expr_dn, (1 - varon[name, i]))
                 end
             end
-            if t <= cont.duration_data.down
-                expr_dn += cont.initial_duration[2].value
+            if t <= duration_data[ix].down
+                expr_dn += PSI.get_value(initial_duration[ix, 2])
+            end
+            if t == 1
+                expr_dn +=
+                    (1 - PSI.get_value(initial_duration[ix, 3])) * duration_data[ix].down
+            else
+                expr_dn += (1 - param[name, t - 1]) * duration_data[ix].down
             end
             con_down[name, t] = JuMP.@constraint(
-                optimization_container.JuMPmodel,
-                varstart[name, t] * cont.duration_data.down - expr_dn <=
-                cont.timeseries[t] * cont.duration_data.down
+                container.JuMPmodel,
+                varstart[name, t] * duration_data[ix].down <=
+                expr_dn + (1 - param[name, t]) * duration_data[ix].down
             )
         end
     end
     return
 end
 
-# TODO: docstrings
-@doc raw"""
-
-"""
 function device_duration_parameters_outage!(
-    optimization_container::PSI.OptimizationContainer,
-    constraint_info::Vector{DeviceDurationConstraintInfo},
-    cons_name::Symbol,
-    var_names::Tuple{Symbol, Symbol, Symbol},
-    param_reference::PSI.UpdateRef,
-)
-    time_steps = PSI.model_time_steps(optimization_container)
-    varon = PSI.get_variable(optimization_container, var_names[1])
-    varstart = PSI.get_variable(optimization_container, var_names[2])
-    varstop = PSI.get_variable(optimization_container, var_names[3])
+    container::PSI.OptimizationContainer,
+    duration_data::Vector{PSI.UpDown},
+    initial_duration::Matrix{PSI.InitialCondition},
+    cons_type::OutageTimeConstraint,
+    ::Type{T},
+) where {T <: PSY.ThermalGen}
+    time_steps = PSI.get_time_steps(container)
+    varon = PSI.get_variable(container, PSI.OnVariable(), T)
+    varstop = PSI.get_variable(container, PSI.StopVariable(), T)
+    varstart = PSI.get_variable(container, PSI.StartVariable(), T)
 
-    name_up = PSI.middle_rename(cons_name, PSI.PSI_NAME_DELIMITER, "up")
-    name_down = PSI.middle_rename(cons_name, PSI.PSI_NAME_DELIMITER, "dn")
-
-    set_names = [PSI.get_component_name(ic) for ic in constraint_info]
-    con_up = PSI.add_cons_container!(optimization_container, name_up, set_names, time_steps)
-    con_down =
-        PSI.add_cons_container!(optimization_container, name_down, set_names, time_steps)
-
-    container_outage = PSI.add_param_container!(
-        optimization_container,
-        param_reference,
+    set_names = [PSI.get_component_name(ic) for ic in initial_duration[:, 1]]
+    con_up = PSI.add_constraints_container!(
+        container,
+        cons_type,
+        T,
         set_names,
         time_steps,
+        meta = "up",
     )
-    param = PSI.get_parameter_array(container_outage)
-    multiplier = PSI.get_multiplier_array(container_outage)
+    con_down = PSI.add_constraints_container!(
+        container,
+        cons_type,
+        T,
+        set_names,
+        time_steps,
+        meta = "dn",
+    )
+    param = PSI.get_parameter_array(container, OutageTimeSeriesParameter(), T)
+    multiplier =
+        PSI.get_parameter_multiplier_array(container, OutageTimeSeriesParameter(), T)
 
     for t in time_steps
-        for cont in constraint_info
-            name = PSI.get_component_name(cont)
-
-            param[name, t] =
-                PJ.add_parameter(optimization_container.JuMPmodel, cont.timeseries[t])
-            multiplier[name, t] = cont.multiplier
+        for (ix, ic) in enumerate(initial_duration[:, 1])
+            name = PSI.get_component_name(ic)
 
             # Minimum Up-time Constraint
-            expr_up =
-                JuMP.GenericAffExpr{Float64, PSI._variable_type(optimization_container)}(0)
-            for i in (t - cont.duration_data.up + 1):t
+            expr_up = JuMP.GenericAffExpr{Float64, JuMP.VariableRef}(0)
+            for i in (t - duration_data[ix].up + 1):t
                 if i in time_steps
+                    i = Int64(i)
                     JuMP.add_to_expression!(expr_up, varon[name, i])
                 end
             end
-            if t <= cont.duration_data.up
-                expr_up += cont.initial_duration[1].value
+            if t <= duration_data[ix].up
+                expr_up += PSI.get_value(ic)
             end
 
             con_up[name, t] = JuMP.@constraint(
-                optimization_container.JuMPmodel,
-                varstop[name, t] * cont.duration_data.up - expr_up <=
-                param[name, t] * cont.duration_data.up
+                container.JuMPmodel,
+                varstop[name, t] * duration_data[ix].up <=
+                expr_up +
+                (1 * duration_data[ix].up - param[name, t] * duration_data[ix].up)
             )
 
             # Minimum Down-time Constraint
-            expr_dn =
-                JuMP.GenericAffExpr{Float64, PSI._variable_type(optimization_container)}(0)
-            for i in (t - cont.duration_data.down + 1):t
+            expr_dn = JuMP.GenericAffExpr{Float64, JuMP.VariableRef}(0)
+            for i in (t - duration_data[ix].down + 1):t
                 if i in time_steps
+                    i = Int64(i)
                     JuMP.add_to_expression!(expr_dn, (1 - varon[name, i]))
                 end
             end
-            if t <= cont.duration_data.down
-                expr_dn += cont.initial_duration[2].value
+            if t <= duration_data[ix].down
+                expr_dn += PSI.get_value(initial_duration[ix, 2])
+            end
+
+            if t == 1
+                expr_dn += (
+                    duration_data[ix].down -
+                    PSI.get_value(initial_duration[ix, 3]) * duration_data[ix].down
+                )
+            else
+                expr_dn +=
+                    (duration_data[ix].down - param[name, t - 1] * duration_data[ix].down)
             end
             con_down[name, t] = JuMP.@constraint(
-                optimization_container.JuMPmodel,
-                varstart[name, t] * cont.duration_data.down - expr_dn <=
-                param[name, t] * cont.duration_data.down
+                container.JuMPmodel,
+                varstart[name, t] * duration_data[ix].down <= expr_dn
             )
         end
     end
